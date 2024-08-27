@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: main
+
+env:
+  CARGO_TERM_COLOR: always
+  GITHUB_ACTION_RUN_ID: ${{ github.run_id }}
+  GITHUB_ACTION_RUN_NUMBER: ${{ github.run_number }}
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.80.0
+        with:
+          components: rustfmt, clippy
+
+      - name: Cargo cache
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          path: ~/.cargo/registry
+
+      - name: install MoonBit
+        run: |
+          curl -fsSLv https://cli.moonbitlang.com/install/unix.sh | bash -s
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+      - name: Version
+        run: moon version --all
+      - name: Build
+        run: |
+          cargo build --release
+          ./target/release/moon_dashboard --file repos.txt
+
+      - name: Install duckdb
+        run: brew install duckdb
+      - name: Query
+        run: duckdb -c ".read query.sql"
+
+      - name: Commit
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data.jsonl
+          git commit -m "Update data.jsonl" || echo "No changes to commit"
+
+      - name: Push changes
+        run: git push
