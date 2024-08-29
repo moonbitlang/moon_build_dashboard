@@ -3,4 +3,3 @@ https://github.com/moonbitlang/x
 https://github.com/yj-qin/regexp
 https://github.com/Yoorkin/ArgParser
 https://github.com/gmlewis/moonbit-base64
-https://github.com/gmlewis/moonbit-fonts

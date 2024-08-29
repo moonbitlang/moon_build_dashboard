@@ -25,6 +25,7 @@ struct Statistics {
     command: MoonCommand,
     moon_version: String,
     moonc_version: String,
+    status: i32,
     elapsed: Option<u64>, // None for failed cases
     start_time: String,
     run_id: String,
@@ -36,8 +37,7 @@ fn run_moon(workdir: &Path, args: &[&str]) -> anyhow::Result<Duration> {
     let mut cmd = std::process::Command::new("moon")
         .current_dir(workdir)
         .args(args)
-        .spawn()
-        .expect("failed to execute process");
+        .spawn()?;
     let exit = cmd.wait()?;
     if !exit.success() {
         return Err(anyhow::anyhow!("failed to execute"));
@@ -82,7 +82,9 @@ fn stat_moon(
     let mut durations: Vec<Option<Duration>> = vec![];
     for _ in 0..2 {
         let _ = run_moon(workdir, &["clean"]);
-        let d = run_moon(workdir, &cmd.args()).ok();
+        let r = run_moon(workdir, &cmd.args());
+        let status = r.is_err() as i32;
+        let d = r.ok();
         durations.push(d);
         let start_time = Local::now()
             .with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
@@ -97,6 +99,7 @@ fn stat_moon(
             command: cmd,
             moon_version: moon_version.to_string(),
             moonc_version: moonc_version.to_string(),
+            status,
             elapsed,
             start_time,
             run_id,
