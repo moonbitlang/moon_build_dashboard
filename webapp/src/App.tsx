@@ -180,11 +180,11 @@ const App = () => {
           <p className="font-mono">
             GitHub Action:{' '}
             <a
-              href={`https://github.com/moonbitlang/moon_build_dashboard/actions/runs/${runId}`}
+              href={`https://github.com/moonbitlang/moon-build-dashboard/actions/runs/${runId}`}
               target="_blank"
               rel="noopener noreferrer"
             >
-              {`https://github.com/moonbitlang/moon_build_dashboard/actions/runs/${runId}`}
+              {`https://github.com/moonbitlang/moon-build-dashboard/actions/runs/${runId}`}
             </a>
           </p>
         </div>

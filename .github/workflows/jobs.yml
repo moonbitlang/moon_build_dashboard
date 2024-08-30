@@ -74,8 +74,8 @@ jobs:
       - name: pnpm run build
         run: |
           pnpm run build
-          sed -i '' 's|="/assets|="/moon_build_dashboard/assets|g' ./dist/index.html
-          sed -i '' 's|"/data.jsonl"|"/moon_build_dashboard/data.jsonl"|g' ./dist/assets/*.js
+          sed -i '' 's|="/assets|="/moon-build-dashboard/assets|g' ./dist/index.html
+          sed -i '' 's|"/data.jsonl"|"/moon-build-dashboard/data.jsonl"|g' ./dist/assets/*.js
         working-directory: ./webapp
 
       - name: Deploy to GitHub Pages
