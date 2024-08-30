@@ -3,3 +3,6 @@ https://github.com/moonbitlang/x
 https://github.com/yj-qin/regexp
 https://github.com/Yoorkin/ArgParser
 https://github.com/gmlewis/moonbit-base64
+https://github.com/Yoorkin/prettyprinter
+https://github.com/gmlewis/moonbit-b2
+https://github.com/moonbitlang/quickcheck
