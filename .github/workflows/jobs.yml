@@ -30,6 +30,12 @@ jobs:
         with:
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
           path: ~/.cargo/registry
+      - uses: pnpm/action-setup@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
 
       - name: install MoonBit
         run: |
@@ -42,11 +48,6 @@ jobs:
           cargo build --release
           ./target/release/moon_dashboard --file repos.txt
 
-      - name: Install duckdb
-        run: brew install duckdb
-      - name: Query
-        run: duckdb -c ".read query.sql"
-
       - name: Commit
         run: |
           git config --local user.email "action@github.com"
@@ -56,3 +57,20 @@ jobs:
 
       - name: Push changes
         run: git push
+    
+      - name: pnpm install
+        run: pnpm install
+
+      - name: pnpm run build
+        run: pnpm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./webapp/dist
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          force_orphan: true
+
