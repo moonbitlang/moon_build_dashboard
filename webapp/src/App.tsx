@@ -115,7 +115,6 @@ const App = () => {
       const parsedData = await get_data();
       const transformedData = transform_data(parsedData);
       const transformedData2 = transform_data2(transformedData);
-      console.log(transformedData2);
       setData(transformedData2);
     } catch (err) {
       if (err instanceof Error) {
@@ -130,15 +129,14 @@ const App = () => {
     fetchData();
   }, []);
 
-  // Helper function to determine background color based on status
   const getStatusColor = (status: number | null) => {
-    if (status === null) return 'bg-gray-200'; // Default color for null
+    if (status === null) return 'bg-gray-200';
     return status === 0 ? 'bg-green-200' : 'bg-red-200';
   };
 
   return (
-    <div className="p-8 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6 text-center">Moon Build Dashboard</h1>
+    <div className="p-4 bg-gray-100 min-h-screen">
+      <h1 className="text-2xl font-bold mb-4 text-center">Moon Build Dashboard</h1>
       {error ? (
         <p className="text-red-500 text-center">{error}</p>
       ) : (
@@ -146,18 +144,18 @@ const App = () => {
           <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
             <thead className="bg-blue-500 text-white">
               <tr>
-                <th className="py-3 px-6 text-left">Repository</th>
-                <th className="py-3 px-6 text-left">Check</th>
-                <th className="py-3 px-6 text-left">Build</th>
-                <th className="py-3 px-6 text-left">Bundle</th>
-                <th className="py-3 px-6 text-left">Test</th>
-                <th className="py-3 px-6 text-left">Start Time</th>
+                <th className="py-2 px-4 text-left">Repository</th>
+                <th className="py-2 px-4 text-left">Check</th>
+                <th className="py-2 px-4 text-left">Build</th>
+                <th className="py-2 px-4 text-left">Bundle</th>
+                <th className="py-2 px-4 text-left">Test</th>
+                <th className="py-2 px-4 text-left">Start Time</th>
               </tr>
             </thead>
             <tbody>
               {data.map((entry, index) => (
                 <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="py-3 px-6">
+                  <td className="py-2 px-4">
                     <a
                       href={entry.repo}
                       className="text-blue-600 hover:text-blue-800"
@@ -167,11 +165,11 @@ const App = () => {
                       {entry.repo.replace('https://github.com/', '')}@{entry.rev}
                     </a>
                   </td>
-                  <td className={`py-3 px-6 ${getStatusColor(entry.check)}`} />
-                  <td className={`py-3 px-6 ${getStatusColor(entry.build)}`} />
-                  <td className={`py-3 px-6 ${getStatusColor(entry.bundle)}`} />
-                  <td className={`py-3 px-6 ${getStatusColor(entry.test)}`} />
-                  <td className="py-3 px-6">{entry.start_time}</td>
+                  <td className={`py-2 px-4 ${getStatusColor(entry.check)}`} />
+                  <td className={`py-2 px-4 ${getStatusColor(entry.build)}`} />
+                  <td className={`py-2 px-4 ${getStatusColor(entry.bundle)}`} />
+                  <td className={`py-2 px-4 ${getStatusColor(entry.test)}`} />
+                  <td className="py-2 px-4">{entry.start_time}</td>
                 </tr>
               ))}
             </tbody>
