@@ -30,15 +30,6 @@ jobs:
         with:
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
           path: ~/.cargo/registry
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-
       - name: install MoonBit
         run: |
           curl -fsSLv https://cli.moonbitlang.com/install/unix.sh | bash -s
@@ -59,12 +50,23 @@ jobs:
 
       - name: Push changes
         run: git push
-    
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
       - name: pnpm install
         run: pnpm install
+        working-directory: ./webapp
 
       - name: pnpm run build
         run: pnpm run build
+        working-directory: ./webapp
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -75,4 +77,3 @@ jobs:
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           force_orphan: true
-
