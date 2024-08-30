@@ -30,13 +30,23 @@ interface RepoEntry {
   test: { status: number; elapsed: number | null; start_time: string } | null;
 }
 
-function transform_data(rows: Row[]): RepoEntry[] {
+function transform_data(rows: Row[]): { entries: RepoEntry[], moon_version: string, moonc_version: string, run_id: string } {
   const repoMap: { [key: string]: RepoEntry } = {};
-
+  let moon_version = rows[0]?.moon_version || '';
+  let moonc_version = rows[0]?.moonc_version || '';
+  let run_id = rows[0]?.run_id || '';
   rows.forEach((row) => {
     const { repo, rev, command, status, elapsed, start_time } = row;
     const key = `${repo}@${rev}`;
-
+    if (moon_version !== row.moon_version) {
+      moon_version = row.moon_version;
+    }
+    if (moonc_version !== row.moonc_version) {
+      moonc_version = row.moonc_version;
+    }
+    if (run_id !== row.run_id) {
+      run_id = row.run_id;
+    }
     if (!repoMap[key]) {
       repoMap[key] = {
         repo,
@@ -61,17 +71,18 @@ function transform_data(rows: Row[]): RepoEntry[] {
     }
   });
 
-  return Object.values(repoMap);
+  return { entries: Object.values(repoMap), moon_version, moonc_version, run_id };
 }
 
 interface TransformedEntry {
   repo: string;
   rev: string;
-  check: number | null;
-  build: number | null;
-  bundle: number | null;
-  test: number | null;
+  check: { status: number | null, elapsed: number | null };
+  build: { status: number | null, elapsed: number | null };
+  bundle: { status: number | null, elapsed: number | null };
+  test: { status: number | null, elapsed: number | null };
   start_time: string;
+  run_id: string;
 }
 
 interface RepoMap {
@@ -89,11 +100,12 @@ function transform_data2(entries: RepoEntry[]): TransformedEntry[] {
       repoMap[key] = {
         repo,
         rev,
-        check: check ? check.status : null,
-        build: build ? build.status : null,
-        bundle: bundle ? bundle.status : null,
-        test: test ? test.status : null,
+        check: { status: check ? check.status : null, elapsed: check ? check.elapsed : null },
+        build: { status: build ? build.status : null, elapsed: build ? build.elapsed : null },
+        bundle: { status: bundle ? bundle.status : null, elapsed: bundle ? bundle.elapsed : null },
+        test: { status: test ? test.status : null, elapsed: test ? test.elapsed : null },
         start_time: '',
+        run_id: '',
       };
     }
 
@@ -108,14 +120,20 @@ function transform_data2(entries: RepoEntry[]): TransformedEntry[] {
 
 const App = () => {
   const [data, setData] = useState<TransformedEntry[]>([]);
+  const [moonVersion, setMoonVersion] = useState<string>('');
+  const [mooncVersion, setMooncVersion] = useState<string>('');
+  const [runId, setRunId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
       const parsedData = await get_data();
-      const transformedData = transform_data(parsedData);
-      const transformedData2 = transform_data2(transformedData);
+      const { entries, moon_version, moonc_version, run_id } = transform_data(parsedData);
+      const transformedData2 = transform_data2(entries);
       setData(transformedData2);
+      setMoonVersion(moon_version);
+      setMooncVersion(moonc_version);
+      setRunId(run_id);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -129,53 +147,91 @@ const App = () => {
     fetchData();
   }, []);
 
-  const getStatusColor = (status: number | null) => {
-    if (status === null) return 'bg-gray-200';
-    return status === 0 ? 'bg-green-200' : 'bg-red-200';
+  const getStatusStyle = (status: number | null): string => {
+    if (status === null) return 'bg-gray-200 text-gray-800';
+    return status === 0 ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800';
+  };
+
+  const getStatusText = (status: number | null, elapsed: number | null): string => {
+    if (status === null) return 'N/A';
+
+    if (status === 0) {
+      if (elapsed) {
+        return `${elapsed} ms`;
+      } else {
+        return '-';
+      }
+    } else {
+      if (elapsed) {
+        return `${elapsed} ms`;
+      } else {
+        return '';
+      }
+    }
   };
 
   return (
-    <div className="p-4 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-4 text-center">Moon Build Dashboard</h1>
-      {error ? (
-        <p className="text-red-500 text-center">{error}</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
-            <thead className="bg-blue-500 text-white">
-              <tr>
-                <th className="py-2 px-4 text-left">Repository</th>
-                <th className="py-2 px-4 text-left">Check</th>
-                <th className="py-2 px-4 text-left">Build</th>
-                <th className="py-2 px-4 text-left">Bundle</th>
-                <th className="py-2 px-4 text-left">Test</th>
-                <th className="py-2 px-4 text-left">Start Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((entry, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="py-2 px-4">
-                    <a
-                      href={entry.repo}
-                      className="text-blue-600 hover:text-blue-800"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {entry.repo.replace('https://github.com/', '')}@{entry.rev}
-                    </a>
-                  </td>
-                  <td className={`py-2 px-4 ${getStatusColor(entry.check)}`} />
-                  <td className={`py-2 px-4 ${getStatusColor(entry.build)}`} />
-                  <td className={`py-2 px-4 ${getStatusColor(entry.bundle)}`} />
-                  <td className={`py-2 px-4 ${getStatusColor(entry.test)}`} />
-                  <td className="py-2 px-4">{entry.start_time}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="p-4 bg-gray-100 min-h-screen flex justify-center">
+      <div className="max-w-[800px] w-full">
+        <h1 className="text-2xl font-bold mb-2">Moon Build Dashboard</h1>
+        <div className="mb-4">
+          <p className="font-mono">moon version: {moonVersion}</p>
+          <p className="font-mono">moonc version: {mooncVersion}</p>
+          <p className="font-mono">
+            GitHub Action:{' '}
+            <a
+              href={`https://github.com/moonbitlang/moon_build_dashboard/actions/runs/${runId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {`https://github.com/moonbitlang/moon_build_dashboard/actions/runs/${runId}`}
+            </a>
+          </p>
         </div>
-      )}
+        {error ? (
+          <p className="text-red-500 text-center">{error}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto bg-white shadow-md rounded-lg overflow-hidden">
+              <thead className="bg-blue-500 text-white">
+                <tr>
+                  <th className="py-2 px-4 text-left w-1/3">Repository</th>
+                  <th className="py-2 px-4 text-left w-1/6">Check</th>
+                  <th className="py-2 px-4 text-left w-1/6">Build</th>
+                  <th className="py-2 px-4 text-left w-1/6">Test</th>
+                  <th className="py-2 px-4 text-left w-1/6">Start Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((entry, index) => (
+                  <tr key={index} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-4">
+                      <a
+                        href={entry.repo}
+                        className="text-blue-600 hover:text-blue-800"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {entry.repo.replace('https://github.com/', '')}
+                      </a>
+                    </td>
+                    <td className={`py-2 px-4 ${getStatusStyle(entry.check.status)}`}>
+                      {getStatusText(entry.check.status, entry.check.elapsed)}
+                    </td>
+                    <td className={`py-2 px-4 ${getStatusStyle(entry.build.status)}`}>
+                      {getStatusText(entry.build.status, entry.build.elapsed)}
+                    </td>
+                    <td className={`py-2 px-4 ${getStatusStyle(entry.test.status)}`}>
+                      {getStatusText(entry.test.status, entry.test.elapsed)}
+                    </td>
+                    <td className="py-2 px-4 text-xs">{entry.start_time}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
