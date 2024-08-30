@@ -1,53 +1,136 @@
 import React, { useState, useEffect } from 'react';
 
-const App = () => {
-  const [data, setData] = useState([]);
-  const [error, setError] = useState(null);
+interface Row {
+  repo: string;
+  rev: string;
+  command: string;
+  moon_version: string;
+  moonc_version: string;
+  status: number;
+  elapsed: number | null;
+  start_time: string;
+  run_id: string;
+  run_number: string;
+}
 
-  // Function to fetch and parse the JSONL file
+async function get_data(): Promise<Row[]> {
+  const response = await fetch('/data.jsonl');
+  const text = await response.text();
+  const lines = text.split('\n').filter((line) => line.trim() !== '');
+  const parsedData = lines.map((line) => JSON.parse(line));
+  return parsedData;
+}
+
+interface RepoEntry {
+  repo: string;
+  rev: string;
+  check: { status: number; elapsed: number | null; start_time: string } | null;
+  build: { status: number; elapsed: number | null; start_time: string } | null;
+  bundle: { status: number; elapsed: number | null; start_time: string } | null;
+  test: { status: number; elapsed: number | null; start_time: string } | null;
+}
+
+function transform_data(rows: Row[]): RepoEntry[] {
+  const repoMap: { [key: string]: RepoEntry } = {};
+
+  rows.forEach((row) => {
+    const { repo, rev, command, status, elapsed, start_time } = row;
+    const key = `${repo}@${rev}`;
+
+    if (!repoMap[key]) {
+      repoMap[key] = {
+        repo,
+        rev,
+        check: null,
+        build: null,
+        bundle: null,
+        test: null,
+      };
+    }
+
+    const commandEntry = { status, elapsed, start_time };
+
+    if (command.toLowerCase() === 'check') {
+      repoMap[key].check = commandEntry;
+    } else if (command.toLowerCase() === 'build') {
+      repoMap[key].build = commandEntry;
+    } else if (command.toLowerCase() === 'bundle') {
+      repoMap[key].bundle = commandEntry;
+    } else if (command.toLowerCase() === 'test') {
+      repoMap[key].test = commandEntry;
+    }
+  });
+
+  return Object.values(repoMap);
+}
+
+interface TransformedEntry {
+  repo: string;
+  rev: string;
+  check: string;
+  build: string;
+  bundle: string;
+  test: string;
+  start_time: string;
+}
+
+interface RepoMap {
+  [key: string]: TransformedEntry;
+}
+
+function transform_data2(entries: RepoEntry[]): TransformedEntry[] {
+  const repoMap: RepoMap = {};
+
+  entries.forEach((entry) => {
+    const { repo, rev, check, build, bundle, test } = entry;
+    const key = `${repo}@${rev}`;
+
+    if (!repoMap[key]) {
+      repoMap[key] = {
+        repo,
+        rev,
+        check: '-',
+        build: '-',
+        test: '-',
+        bundle: '-',
+        start_time: '',
+      };
+    }
+
+    repoMap[key].check = check ? `${check.status} (${check.elapsed !== null ? `${check.elapsed} ms` : '-'})` : '-';
+    repoMap[key].build = build ? `${build.status} (${build.elapsed !== null ? `${build.elapsed} ms` : '-'})` : '-';
+    repoMap[key].bundle = bundle ? `${bundle.status} (${bundle.elapsed !== null ? `${bundle.elapsed} ms` : '-'})` : '-';
+    repoMap[key].test = test ? `${test.status} (${test.elapsed !== null ? `${test.elapsed} ms` : '-'})` : '-';
+
+    const startTimes = [check?.start_time, build?.start_time, bundle?.start_time, test?.start_time].filter(Boolean);
+    if (startTimes.length > 0) {
+      repoMap[key].start_time = startTimes.sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0]!;
+    }
+  });
+
+  return Object.values(repoMap);
+}
+
+const App = () => {
+  const [data, setData] = useState<TransformedEntry[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
   const fetchData = async () => {
     try {
-      const response = await fetch('/data.jsonl'); // File is now in the public folder
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const text = await response.text();
-      const lines = text.split('\n').filter((line) => line.trim() !== '');
-      const parsedData = lines.map((line) => JSON.parse(line));
-
-      // Process data to get the latest status for each command by repo
-      const transformedData = transformData(parsedData);
-      setData(transformedData);
+      const parsedData = await get_data();
+      const transformedData = transform_data(parsedData);
+      const transformedData2 = transform_data2(transformedData);
+      console.log(transformedData2);
+      setData(transformedData2);
     } catch (err) {
-      setError(err.message);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Unknown error occurred');
+      }
     }
   };
 
-  // Helper function to transform data into the required format
-  const transformData = (data) => {
-    const repoMap = {};
-
-    data.forEach((entry) => {
-      const { repo, rev, command, status, elapsed, start_time } = entry;
-
-      // Initialize the repo entry if it doesn't exist
-      if (!repoMap[repo]) {
-        repoMap[repo] = { repo, rev, Check: 'N/A', Build: 'N/A', Bundle: 'N/A', Test: 'N/A', start_time: 'N/A' };
-      }
-
-      // Update the latest command status
-      repoMap[repo][command] = `${status} (${elapsed !== null ? `${elapsed} ms` : 'N/A'})`;
-
-      // Keep track of the latest start time
-      if (new Date(start_time) > new Date(repoMap[repo].start_time)) {
-        repoMap[repo].start_time = start_time;
-      }
-    });
-
-    return Object.values(repoMap);
-  };
-
-  // Fetch data on component mount
   useEffect(() => {
     fetchData();
   }, []);
@@ -83,10 +166,10 @@ const App = () => {
                       {entry.repo.replace('https://github.com/', '')}@{entry.rev}
                     </a>
                   </td>
-                  <td className="py-3 px-6">{entry.Check}</td>
-                  <td className="py-3 px-6">{entry.Build}</td>
-                  <td className="py-3 px-6">{entry.Bundle}</td>
-                  <td className="py-3 px-6">{entry.Test}</td>
+                  <td className="py-3 px-6">{entry.check}</td>
+                  <td className="py-3 px-6">{entry.build}</td>
+                  <td className="py-3 px-6">{entry.bundle}</td>
+                  <td className="py-3 px-6">{entry.test}</td>
                   <td className="py-3 px-6">{entry.start_time}</td>
                 </tr>
               ))}
