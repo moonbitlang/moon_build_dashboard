@@ -64,7 +64,9 @@ jobs:
         working-directory: ./webapp
 
       - name: pnpm run build
-        run: pnpm run build
+        run: |
+          pnpm run build
+          sed -i 's|src="/assets|src="/moon_build/dashboard/assets|g' ./dist/index.html
         working-directory: ./webapp
 
       - name: Deploy to GitHub Pages
