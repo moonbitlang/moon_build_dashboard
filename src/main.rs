@@ -201,7 +201,7 @@ pub fn run(repo: &str) -> anyhow::Result<()> {
     let fp = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open("data.jsonl")?;
+        .open("webapp/public/data.jsonl")?;
     let mut writer = std::io::BufWriter::new(fp);
     for log in logs {
         writeln!(writer, "{}", serde_json::to_string(&log)?)?;

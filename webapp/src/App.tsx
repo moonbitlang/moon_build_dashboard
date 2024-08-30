@@ -67,10 +67,10 @@ function transform_data(rows: Row[]): RepoEntry[] {
 interface TransformedEntry {
   repo: string;
   rev: string;
-  check: string;
-  build: string;
-  bundle: string;
-  test: string;
+  check: number | null;
+  build: number | null;
+  bundle: number | null;
+  test: number | null;
   start_time: string;
 }
 
@@ -89,18 +89,13 @@ function transform_data2(entries: RepoEntry[]): TransformedEntry[] {
       repoMap[key] = {
         repo,
         rev,
-        check: '-',
-        build: '-',
-        test: '-',
-        bundle: '-',
+        check: check ? check.status : null,
+        build: build ? build.status : null,
+        bundle: bundle ? bundle.status : null,
+        test: test ? test.status : null,
         start_time: '',
       };
     }
-
-    repoMap[key].check = check ? `${check.status} (${check.elapsed !== null ? `${check.elapsed} ms` : '-'})` : '-';
-    repoMap[key].build = build ? `${build.status} (${build.elapsed !== null ? `${build.elapsed} ms` : '-'})` : '-';
-    repoMap[key].bundle = bundle ? `${bundle.status} (${bundle.elapsed !== null ? `${bundle.elapsed} ms` : '-'})` : '-';
-    repoMap[key].test = test ? `${test.status} (${test.elapsed !== null ? `${test.elapsed} ms` : '-'})` : '-';
 
     const startTimes = [check?.start_time, build?.start_time, bundle?.start_time, test?.start_time].filter(Boolean);
     if (startTimes.length > 0) {
@@ -135,9 +130,15 @@ const App = () => {
     fetchData();
   }, []);
 
+  // Helper function to determine background color based on status
+  const getStatusColor = (status: number | null) => {
+    if (status === null) return 'bg-gray-200'; // Default color for null
+    return status === 0 ? 'bg-green-200' : 'bg-red-200';
+  };
+
   return (
     <div className="p-8 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6 text-center">Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6 text-center">Moon Build Dashboard</h1>
       {error ? (
         <p className="text-red-500 text-center">{error}</p>
       ) : (
@@ -145,12 +146,12 @@ const App = () => {
           <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
             <thead className="bg-blue-500 text-white">
               <tr>
-                <th className="py-3 px-6 text-left">Repo (Revision)</th>
+                <th className="py-3 px-6 text-left">Repository</th>
                 <th className="py-3 px-6 text-left">Check</th>
                 <th className="py-3 px-6 text-left">Build</th>
                 <th className="py-3 px-6 text-left">Bundle</th>
                 <th className="py-3 px-6 text-left">Test</th>
-                <th className="py-3 px-6 text-left">Latest Start Time</th>
+                <th className="py-3 px-6 text-left">Start Time</th>
               </tr>
             </thead>
             <tbody>
@@ -166,10 +167,10 @@ const App = () => {
                       {entry.repo.replace('https://github.com/', '')}@{entry.rev}
                     </a>
                   </td>
-                  <td className="py-3 px-6">{entry.check}</td>
-                  <td className="py-3 px-6">{entry.build}</td>
-                  <td className="py-3 px-6">{entry.bundle}</td>
-                  <td className="py-3 px-6">{entry.test}</td>
+                  <td className={`py-3 px-6 ${getStatusColor(entry.check)}`} />
+                  <td className={`py-3 px-6 ${getStatusColor(entry.build)}`} />
+                  <td className={`py-3 px-6 ${getStatusColor(entry.bundle)}`} />
+                  <td className={`py-3 px-6 ${getStatusColor(entry.test)}`} />
                   <td className="py-3 px-6">{entry.start_time}</td>
                 </tr>
               ))}
