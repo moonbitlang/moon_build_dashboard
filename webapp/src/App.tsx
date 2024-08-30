@@ -198,7 +198,7 @@ const App = () => {
                   <th className="py-2 px-4 text-left w-1/3">Repository</th>
                   <th className="py-2 px-4 text-left w-1/6">Check</th>
                   <th className="py-2 px-4 text-left w-1/6">Build</th>
-                  <th className="py-2 px-4 text-left w-1/6">Test</th>
+                  <th className="py-2 px-4 text-left w-1/6"><div>Test<div className="text-xs">(build only)</div></div></th>
                   <th className="py-2 px-4 text-left w-1/6">Start Time</th>
                 </tr>
               </thead>
