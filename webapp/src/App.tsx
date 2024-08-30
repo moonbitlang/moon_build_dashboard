@@ -177,7 +177,7 @@ const App = () => {
         <div className="mb-4">
           <p className="font-mono">moon version: {moonVersion}</p>
           <p className="font-mono">moonc version: {mooncVersion}</p>
-          <p className="font-mono">
+          <p className="font-mono text-xs">
             GitHub Action:{' '}
             <a
               href={`https://github.com/moonbitlang/moon-build-dashboard/actions/runs/${runId}`}
