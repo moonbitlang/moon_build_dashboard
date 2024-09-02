@@ -6,10 +6,11 @@ use std::{
 
 use argh::FromArgs;
 use chrono::{FixedOffset, Local};
-use serde::{Deserialize, Serialize};
 
 use moon_dashboard::git;
 use moon_dashboard::util;
+use moon_dashboard::MoonCommand;
+use moon_dashboard::Statistics;
 
 #[derive(FromArgs)]
 #[argh(description = "...")]
@@ -19,20 +20,6 @@ pub struct Stat {
 
     #[argh(option, short = 'f', description = "read repos from file")]
     file: Option<PathBuf>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct Statistics {
-    repo: String,
-    rev: String,
-    command: MoonCommand,
-    moon_version: String,
-    moonc_version: String,
-    status: i32,
-    elapsed: Option<u64>, // None for failed cases
-    start_time: String,
-    run_id: String,
-    run_number: String,
 }
 
 fn run_moon(workdir: &Path, args: &[&str]) -> anyhow::Result<Duration> {
@@ -52,25 +39,6 @@ fn run_moon(workdir: &Path, args: &[&str]) -> anyhow::Result<Duration> {
         elapsed.as_millis()
     );
     Ok(elapsed)
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-enum MoonCommand {
-    Check,
-    Build,
-    Test,
-    Bundle,
-}
-
-impl MoonCommand {
-    fn args(&self) -> Vec<&str> {
-        match self {
-            MoonCommand::Check => vec!["check", "-q"],
-            MoonCommand::Build => vec!["build", "-q"],
-            MoonCommand::Test => vec!["test", "-q", "--build-only"],
-            MoonCommand::Bundle => vec!["bundle", "-q"],
-        }
-    }
 }
 
 fn stat_moon(
