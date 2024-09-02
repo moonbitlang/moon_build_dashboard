@@ -61,8 +61,14 @@ impl MoonCommand {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum ToolChainLabel {
+    Stable,
+    Bleeding,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ToolChainVersion {
-    pub label: String,
+    pub label: ToolChainLabel,
     pub moon_version: String,
     pub moonc_version: String,
 }

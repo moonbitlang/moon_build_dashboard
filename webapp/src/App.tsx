@@ -6,8 +6,10 @@ type MooncakeSource =
 
 type MoonCommand = "Check" | "Build" | "Test";
 
+type ToolChainLabel = "Stable" | "Bleeding";
+
 interface ToolChainVersion {
-  label: string;
+  label: ToolChainLabel;
   moon_version: string;
   moonc_version: string;
 }

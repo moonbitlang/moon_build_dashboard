@@ -12,7 +12,7 @@ use moon_dashboard::{
     cli,
     dashboard::{
         BuildState, ExecuteResult, MoonBuildDashboard, MoonCommand, MooncakeSource, Status,
-        ToolChainVersion,
+        ToolChainLabel, ToolChainVersion,
     },
     util::{get_moon_version, get_moonc_version, install_bleeding_release, install_stable_release},
 };
@@ -149,7 +149,7 @@ fn stat(cmd: cli::StatSubcommand) -> anyhow::Result<MoonBuildDashboard> {
     let moon_version = get_moon_version()?;
     let moonc_version = get_moonc_version()?;
     let stable_toolchain_version = ToolChainVersion {
-        label: "stable".into(),
+        label: ToolChainLabel::Stable,
         moon_version,
         moonc_version,
     };
@@ -167,7 +167,7 @@ fn stat(cmd: cli::StatSubcommand) -> anyhow::Result<MoonBuildDashboard> {
     let moon_version = get_moon_version()?;
     let moonc_version = get_moonc_version()?;
     let bleeding_toolchain_version = ToolChainVersion {
-        label: "bleeding".into(),
+        label: ToolChainLabel::Bleeding,
         moon_version,
         moonc_version,
     };
