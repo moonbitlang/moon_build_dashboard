@@ -80,47 +80,38 @@ const App = () => {
   return (
     <div className="p-4 bg-gray-100 min-h-screen flex justify-center">
       <div className="max-w-[1200px] w-full">
-        <h1 className="text-2xl font-bold mb-2">Moon Build Dashboard</h1>
-
-        <div className="mb-4">
-          <p className="font-mono">moon version: {data?.stable_toolchain_version.moon_version}</p>
-          <p className="font-mono">moonc version: {data?.stable_toolchain_version.moonc_version}</p>
-          <p className="font-mono text-xs">
-            GitHub Action:{" "}
-            <a
-              href={`https://github.com/moonbitlang/moon-build-dashboard/actions/runs/${data?.run_id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {`https://github.com/moonbitlang/moon-build-dashboard/actions/runs/${data?.run_id}`}
-            </a>
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold mb-4">Moon Build Dashboard</h1>
 
         {error ? (
           <p className="text-red-500 text-center">{error}</p>
         ) : data ? (
           <div className="overflow-x-auto">
             <table className="min-w-full table-auto bg-white shadow-md rounded-lg overflow-hidden">
-              <thead className="bg-blue-500 text-white">
-                <tr>
-                  <th className="py-2 px-4 text-left w-1/4">Repository</th>
-                  <th className="py-2 px-4 text-left w-1/12">Stable Check</th>
-                  <th className="py-2 px-4 text-left w-1/12">Stable Build</th>
-                  <th className="py-2 px-4 text-left w-1/12">
-                    <div>
-                      Stable Test<div className="text-xs">(build only)</div>
+              <thead>
+                <tr className="bg-gray-200">
+                  <th rowSpan={2} className="py-2 px-4 text-left w-1/4 border-r">Repository</th>
+                  <th colSpan={4} className="py-2 px-4 text-center w-1/2 bg-blue-500 text-white border-r">
+                    Stable
+                    <div className="text-xs mt-1 font-normal">
+                      {data.stable_toolchain_version.moon_version} / {data.stable_toolchain_version.moonc_version}
                     </div>
                   </th>
-                  <th className="py-2 px-4 text-left w-1/12">Stable Start Time</th>
-                  <th className="py-2 px-4 text-left w-1/12">Bleeding Check</th>
-                  <th className="py-2 px-4 text-left w-1/12">Bleeding Build</th>
-                  <th className="py-2 px-4 text-left w-1/12">
-                    <div>
-                      Bleeding Test<div className="text-xs">(build only)</div>
+                  <th colSpan={4} className="py-2 px-4 text-center w-1/2 bg-green-500 text-white">
+                    Bleeding
+                    <div className="text-xs mt-1 font-normal">
+                      {data.bleeding_toolchain_version.moon_version} / {data.bleeding_toolchain_version.moonc_version}
                     </div>
                   </th>
-                  <th className="py-2 px-4 text-left w-1/12">Bleeding Start Time</th>
+                </tr>
+                <tr className="bg-gray-100">
+                  <th className="py-1 px-4 text-left text-sm border-r">Check</th>
+                  <th className="py-1 px-4 text-left text-sm border-r">Build</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">Test (build only)</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">Start Time</th>
+                  <th className="py-1 px-4 text-left text-sm border-r">Check</th>
+                  <th className="py-1 px-4 text-left text-sm border-r">Build</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">Test (build only)</th>
+                  <th className="py-1 px-4 text-left text-xs">Start Time</th>
                 </tr>
               </thead>
               <tbody>
@@ -142,23 +133,23 @@ const App = () => {
                           : ""}
                       </a>
                     </td>
-                    <td className={`py-2 px-4 ${getStatusStyle(entry.check.status)}`}>
+                    <td className={`py-2 px-4 ${getStatusStyle(entry.check.status)} border-r`}>
                       {getStatusText(entry.check.status, entry.check.elapsed)}
                     </td>
-                    <td className={`py-2 px-4 ${getStatusStyle(entry.build.status)}`}>
+                    <td className={`py-2 px-4 ${getStatusStyle(entry.build.status)} border-r`}>
                       {getStatusText(entry.build.status, entry.build.elapsed)}
                     </td>
-                    <td className={`py-2 px-4 ${getStatusStyle(entry.test.status)}`}>
+                    <td className={`py-2 px-4 ${getStatusStyle(entry.test.status)} border-r text-xs`}>
                       {getStatusText(entry.test.status, entry.test.elapsed)}
                     </td>
-                    <td className="py-2 px-4 text-xs">{entry.test.start_time}</td>
-                    <td className={`py-2 px-4 ${getStatusStyle(data.bleeding_release_data[index].check.status)}`}>
+                    <td className="py-2 px-4 text-xs border-r">{entry.test.start_time}</td>
+                    <td className={`py-2 px-4 ${getStatusStyle(data.bleeding_release_data[index].check.status)} border-r`}>
                       {getStatusText(data.bleeding_release_data[index].check.status, data.bleeding_release_data[index].check.elapsed)}
                     </td>
-                    <td className={`py-2 px-4 ${getStatusStyle(data.bleeding_release_data[index].build.status)}`}>
+                    <td className={`py-2 px-4 ${getStatusStyle(data.bleeding_release_data[index].build.status)} border-r`}>
                       {getStatusText(data.bleeding_release_data[index].build.status, data.bleeding_release_data[index].build.elapsed)}
                     </td>
-                    <td className={`py-2 px-4 ${getStatusStyle(data.bleeding_release_data[index].test.status)}`}>
+                    <td className={`py-2 px-4 ${getStatusStyle(data.bleeding_release_data[index].test.status)} border-r text-xs`}>
                       {getStatusText(data.bleeding_release_data[index].test.status, data.bleeding_release_data[index].test.elapsed)}
                     </td>
                     <td className="py-2 px-4 text-xs">{data.bleeding_release_data[index].test.start_time}</td>
