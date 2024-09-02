@@ -1,4 +1,5 @@
 use std::{
+    io::Write,
     path::Path,
     time::{Duration, Instant},
 };
@@ -200,7 +201,13 @@ fn main0() -> anyhow::Result<()> {
     };
     match res {
         Ok(dashboard) => {
-            println!("{}", serde_json::to_string(&dashboard)?);
+            let fp = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("webapp/public/data.jsonl")?;
+            let mut writer = std::io::BufWriter::new(fp);
+            writeln!(writer, "{}", serde_json::to_string(&dashboard)?)?;
+            writer.flush()?;
             Ok(())
         }
         Err(e) => Err(e),
