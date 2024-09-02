@@ -79,7 +79,7 @@ const App = () => {
 
   return (
     <div className="p-4 bg-gray-100 min-h-screen flex justify-center">
-      <div className="max-w-[800px] w-full">
+      <div className="max-w-[1200px] w-full">
         <h1 className="text-2xl font-bold mb-2">Moon Build Dashboard</h1>
 
         <div className="mb-4">
@@ -104,15 +104,23 @@ const App = () => {
             <table className="min-w-full table-auto bg-white shadow-md rounded-lg overflow-hidden">
               <thead className="bg-blue-500 text-white">
                 <tr>
-                  <th className="py-2 px-4 text-left w-1/3">Repository</th>
-                  <th className="py-2 px-4 text-left w-1/6">Check</th>
-                  <th className="py-2 px-4 text-left w-1/6">Build</th>
-                  <th className="py-2 px-4 text-left w-1/6">
+                  <th className="py-2 px-4 text-left w-1/4">Repository</th>
+                  <th className="py-2 px-4 text-left w-1/12">Stable Check</th>
+                  <th className="py-2 px-4 text-left w-1/12">Stable Build</th>
+                  <th className="py-2 px-4 text-left w-1/12">
                     <div>
-                      Test<div className="text-xs">(build only)</div>
+                      Stable Test<div className="text-xs">(build only)</div>
                     </div>
                   </th>
-                  <th className="py-2 px-4 text-left w-1/6">Start Time</th>
+                  <th className="py-2 px-4 text-left w-1/12">Stable Start Time</th>
+                  <th className="py-2 px-4 text-left w-1/12">Bleeding Check</th>
+                  <th className="py-2 px-4 text-left w-1/12">Bleeding Build</th>
+                  <th className="py-2 px-4 text-left w-1/12">
+                    <div>
+                      Bleeding Test<div className="text-xs">(build only)</div>
+                    </div>
+                  </th>
+                  <th className="py-2 px-4 text-left w-1/12">Bleeding Start Time</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,6 +152,16 @@ const App = () => {
                       {getStatusText(entry.test.status, entry.test.elapsed)}
                     </td>
                     <td className="py-2 px-4 text-xs">{entry.test.start_time}</td>
+                    <td className={`py-2 px-4 ${getStatusStyle(data.bleeding_release_data[index].check.status)}`}>
+                      {getStatusText(data.bleeding_release_data[index].check.status, data.bleeding_release_data[index].check.elapsed)}
+                    </td>
+                    <td className={`py-2 px-4 ${getStatusStyle(data.bleeding_release_data[index].build.status)}`}>
+                      {getStatusText(data.bleeding_release_data[index].build.status, data.bleeding_release_data[index].build.elapsed)}
+                    </td>
+                    <td className={`py-2 px-4 ${getStatusStyle(data.bleeding_release_data[index].test.status)}`}>
+                      {getStatusText(data.bleeding_release_data[index].test.status, data.bleeding_release_data[index].test.elapsed)}
+                    </td>
+                    <td className="py-2 px-4 text-xs">{data.bleeding_release_data[index].test.start_time}</td>
                   </tr>
                 ))}
               </tbody>
