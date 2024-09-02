@@ -1,27 +1,18 @@
 use std::{
     io::Write,
-    path::{Path, PathBuf},
+    path::Path,
     time::{Duration, Instant},
 };
 
-use argh::FromArgs;
 use chrono::{FixedOffset, Local};
 
+use clap::Parser;
+use moon_dashboard::cli;
 use moon_dashboard::{
     git,
     util::{self, MoonCommand},
 };
 use moon_dashboard::{util::MooncakeSource, Statistics};
-
-#[derive(FromArgs)]
-#[argh(description = "...")]
-pub struct Stat {
-    #[argh(option, description = "specify a repo")]
-    repo_url: Option<String>,
-
-    #[argh(option, short = 'f', description = "read repos from file")]
-    file: Option<PathBuf>,
-}
 
 fn run_moon(workdir: &Path, args: &[&str]) -> anyhow::Result<Duration> {
     let start = Instant::now();
@@ -143,19 +134,19 @@ pub fn run(repo: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn main() -> anyhow::Result<()> {
-    let args: Stat = argh::from_env();
-
+fn stat(cmd: cli::StatSubcommand) -> anyhow::Result<()> {
     let mut repo_list = vec![];
-    if let Some(r) = args.repo_url {
+    if let Some(r) = cmd.repo_url {
         repo_list.push(r);
     }
 
-    if let Some(file) = &args.file {
+    if let Some(file) = &cmd.file {
         let content = std::fs::read_to_string(file)?;
         for line in content.lines() {
             let repo = line.trim();
-            repo_list.push(repo.into());
+            if !repo.is_empty() {
+                repo_list.push(repo.to_string());
+            }
         }
     }
 
@@ -171,4 +162,16 @@ fn main() -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+fn transform(_cmd: cli::TransformSubcommand) -> anyhow::Result<()> {
+    todo!()
+}
+
+fn main() -> anyhow::Result<()> {
+    let cli = cli::MoonBuildDashBoardCli::parse();
+    match cli.subcommand {
+        cli::MoonBuildDashBoardSubcommands::Stat(cmd) => stat(cmd),
+        cli::MoonBuildDashBoardSubcommands::Transform(cmd) => transform(cmd),
+    }
 }

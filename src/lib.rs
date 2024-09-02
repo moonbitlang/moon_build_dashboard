@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use util::{MoonCommand, MooncakeSource};
 
+pub mod cli;
 pub mod dashboard;
 pub mod git;
 pub mod transform;
