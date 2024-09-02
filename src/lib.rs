@@ -1,12 +1,14 @@
 use serde::{Deserialize, Serialize};
+use util::{MoonCommand, MooncakeSource};
 
+pub mod dashboard;
 pub mod git;
+pub mod transform;
 pub mod util;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Statistics {
-    pub repo: String,
-    pub rev: String,
+    pub source: MooncakeSource,
     pub command: MoonCommand,
     pub moon_version: String,
     pub moonc_version: String,
@@ -15,23 +17,4 @@ pub struct Statistics {
     pub start_time: String,
     pub run_id: String,
     pub run_number: String,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum MoonCommand {
-    Check,
-    Build,
-    Test,
-    Bundle,
-}
-
-impl MoonCommand {
-    pub fn args(&self) -> Vec<&str> {
-        match self {
-            MoonCommand::Check => vec!["check", "-q"],
-            MoonCommand::Build => vec!["build", "-q"],
-            MoonCommand::Test => vec!["test", "-q", "--build-only"],
-            MoonCommand::Bundle => vec!["bundle", "-q"],
-        }
-    }
 }

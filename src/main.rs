@@ -7,10 +7,11 @@ use std::{
 use argh::FromArgs;
 use chrono::{FixedOffset, Local};
 
-use moon_dashboard::git;
-use moon_dashboard::util;
-use moon_dashboard::MoonCommand;
-use moon_dashboard::Statistics;
+use moon_dashboard::{
+    git,
+    util::{self, MoonCommand},
+};
+use moon_dashboard::{util::MooncakeSource, Statistics};
 
 #[derive(FromArgs)]
 #[argh(description = "...")]
@@ -65,8 +66,10 @@ fn stat_moon(
         let run_id = std::env::var("GITHUB_ACTION_RUN_ID").unwrap_or("0".into());
         let run_number = std::env::var("GITHUB_ACTION_RUN_NUMBER").unwrap_or("0".into());
         let stat = Statistics {
-            repo: repo.to_string(),
-            rev: rev.to_string(),
+            source: MooncakeSource::Git {
+                url: repo.to_string(),
+                rev: rev.to_string(),
+            },
             command: cmd,
             moon_version: moon_version.to_string(),
             moonc_version: moonc_version.to_string(),
