@@ -8,6 +8,9 @@ use argh::FromArgs;
 use chrono::{FixedOffset, Local};
 use serde::{Deserialize, Serialize};
 
+use moon_dashboard::git;
+use moon_dashboard::util;
+
 #[derive(FromArgs)]
 #[argh(description = "...")]
 pub struct Stat {
@@ -111,55 +114,14 @@ fn stat_moon(
     Ok(vec![last])
 }
 
-pub fn moon_version() -> anyhow::Result<String> {
-    let output = std::process::Command::new("moon")
-        .args(["version"])
-        .output()?;
-    let version = String::from_utf8(output.stdout)?;
-    Ok(version.trim().to_string())
-}
-
-pub fn moonc_version() -> anyhow::Result<String> {
-    let output = std::process::Command::new("moonc").args(["-v"]).output()?;
-    let version = String::from_utf8(output.stdout)?;
-    Ok(version.trim().to_string())
-}
-
-pub fn get_branch_name(workdir: &Path) -> anyhow::Result<String> {
-    let output = std::process::Command::new("git")
-        .current_dir(workdir)
-        .args(["rev-parse", "--abbrev-ref", "HEAD"])
-        .output()?;
-    let branch_name = String::from_utf8(output.stdout)?.trim().to_string();
-    Ok(branch_name)
-}
-
-pub fn get_git_short_hash(workdir: &Path) -> anyhow::Result<String> {
-    let output = std::process::Command::new("git")
-        .current_dir(workdir)
-        .args(["rev-parse", "--short", "HEAD"])
-        .output()?;
-    let hash = String::from_utf8(output.stdout)?.trim().to_string();
-    Ok(hash)
-}
-
-pub fn git_clone_to(repo: &str, workdir: &Path, dst: &str) -> anyhow::Result<()> {
-    let mut cmd = std::process::Command::new("git")
-        .current_dir(workdir)
-        .args(["clone", repo, dst, "--depth", "1"])
-        .spawn()?;
-    cmd.wait()?;
-    Ok(())
-}
-
 pub fn run(repo: &str) -> anyhow::Result<()> {
     let tmp = tempfile::tempdir()?;
-    git_clone_to(repo, tmp.path(), "test")?;
+    git::git_clone_to(repo, tmp.path(), "test")?;
 
     let workdir = tmp.path().join("test");
-    let moon_version = moon_version()?;
-    let moonc_version = moonc_version()?;
-    let rev = get_git_short_hash(&workdir)?;
+    let moon_version = util::moon_version()?;
+    let moonc_version = util::moonc_version()?;
+    let rev = git::get_git_short_hash(&workdir)?;
 
     let mut logs = vec![];
 
