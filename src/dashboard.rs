@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub enum MooncakeSource {
@@ -10,6 +11,34 @@ pub enum MooncakeSource {
         url: String,
         rev: Option<String>,
     },
+}
+
+impl fmt::Display for MooncakeSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MooncakeSource::MooncakesIO { name, version } => {
+                write!(
+                    f,
+                    "{}{}",
+                    name,
+                    version
+                        .as_deref()
+                        .map(|v| format!("@{}", v))
+                        .unwrap_or("".into())
+                )
+            }
+            MooncakeSource::Git { url, rev } => {
+                write!(
+                    f,
+                    "{}{}",
+                    url,
+                    rev.as_deref()
+                        .map(|v| format!("@{}", v))
+                        .unwrap_or("".into())
+                )
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

@@ -48,3 +48,13 @@ pub fn install_stable_release() -> anyhow::Result<()> {
 pub fn install_bleeding_release() -> anyhow::Result<()> {
     install_release(&["-s", "bleeding"])
 }
+
+pub fn moon_update() -> anyhow::Result<()> {
+    let output = std::process::Command::new("moon")
+        .args(["update"])
+        .output()?;
+    if !output.status.success() {
+        return Err(anyhow::anyhow!("Failed to update moon"));
+    }
+    Ok(())
+}

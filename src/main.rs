@@ -6,7 +6,7 @@ use std::{
 use chrono::{FixedOffset, Local};
 
 use clap::Parser;
-use moon_dashboard::git;
+use colored::Colorize;
 use moon_dashboard::{
     cli,
     dashboard::{
@@ -15,9 +15,16 @@ use moon_dashboard::{
     },
     util::{get_moon_version, get_moonc_version, install_bleeding_release, install_stable_release},
 };
+use moon_dashboard::{git, util::moon_update};
 
-fn run_moon(workdir: &Path, args: &[&str]) -> anyhow::Result<Duration> {
+fn run_moon(workdir: &Path, source: &MooncakeSource, args: &[&str]) -> anyhow::Result<Duration> {
     let start = Instant::now();
+    eprintln!(
+        "{}",
+        format!("RUN moon {} for {}", args.join(" "), source)
+            .blue()
+            .bold()
+    );
     let mut cmd = std::process::Command::new("moon")
         .current_dir(workdir)
         .args(args)
@@ -27,10 +34,13 @@ fn run_moon(workdir: &Path, args: &[&str]) -> anyhow::Result<Duration> {
         return Err(anyhow::anyhow!("failed to execute"));
     }
     let elapsed = start.elapsed();
-    println!(
-        "moon {}, elapsed: {}ms",
-        args.join(" "),
-        elapsed.as_millis()
+    eprintln!(
+        "{}",
+        format!(
+            "moon {}, elapsed: {}ms",
+            args.join(" ").blue().bold(),
+            elapsed.as_millis()
+        )
     );
     Ok(elapsed)
 }
@@ -47,22 +57,47 @@ fn get_mooncake_sources(cmd: &cli::StatSubcommand) -> anyhow::Result<Vec<Mooncak
     if let Some(file) = &cmd.file {
         let content = std::fs::read_to_string(file)?;
         for line in content.lines() {
-            let repo = line.trim();
-            if !repo.is_empty() {
-                repo_list.push(MooncakeSource::Git {
-                    url: repo.to_string(),
-                    rev: None,
-                });
+            let s = line.trim();
+            if s.starts_with("https://") {
+                let parts: Vec<&str> = s.split(' ').collect();
+                if parts.len() == 2 {
+                    repo_list.push(MooncakeSource::Git {
+                        url: parts[0].to_string(),
+                        rev: Some(parts[1].to_string()),
+                    });
+                } else {
+                    repo_list.push(MooncakeSource::Git {
+                        url: s.to_string(),
+                        rev: None,
+                    });
+                }
+            } else {
+                let parts: Vec<&str> = s.split('@').collect();
+                if parts.len() == 2 {
+                    repo_list.push(MooncakeSource::MooncakesIO {
+                        name: parts[0].to_string(),
+                        version: Some(parts[1].to_string()),
+                    });
+                } else {
+                    repo_list.push(MooncakeSource::MooncakesIO {
+                        name: s.to_string(),
+                        version: None,
+                    });
+                }
             }
         }
     }
     Ok(repo_list)
 }
 
-fn stat_mooncake(workdir: &Path, cmd: MoonCommand) -> anyhow::Result<ExecuteResult> {
-    let _ = run_moon(workdir, &["clean"]);
+fn stat_mooncake(
+    workdir: &Path,
+    source: &MooncakeSource,
+    cmd: MoonCommand,
+) -> anyhow::Result<ExecuteResult> {
+    let _ = run_moon(workdir, source, &["clean"]);
 
-    let r = run_moon(workdir, &cmd.args());
+    let r = run_moon(workdir, source, &cmd.args());
     let status = if r.is_err() {
         Status::Failure
     } else {
@@ -93,9 +128,9 @@ pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
         }
     }
     let workdir = tmp.path().join("test");
-    let check = stat_mooncake(&workdir, MoonCommand::Check)?;
-    let build = stat_mooncake(&workdir, MoonCommand::Build)?;
-    let test = stat_mooncake(&workdir, MoonCommand::Test)?;
+    let check = stat_mooncake(&workdir, source, MoonCommand::Check)?;
+    let build = stat_mooncake(&workdir, source, MoonCommand::Build)?;
+    let test = stat_mooncake(&workdir, source, MoonCommand::Test)?;
     Ok(BuildState {
         source: source.clone(),
         check,
@@ -109,6 +144,7 @@ fn stat(cmd: cli::StatSubcommand) -> anyhow::Result<MoonBuildDashboard> {
     let run_number = std::env::var("GITHUB_ACTION_RUN_NUMBER").unwrap_or("0".into());
 
     install_stable_release()?;
+    moon_update()?;
     let moon_version = get_moon_version()?;
     let moonc_version = get_moonc_version()?;
     let stable_toolchain_version = ToolChainVersion {
@@ -126,6 +162,7 @@ fn stat(cmd: cli::StatSubcommand) -> anyhow::Result<MoonBuildDashboard> {
     }
 
     install_bleeding_release()?;
+    moon_update()?;
     let moon_version = get_moon_version()?;
     let moonc_version = get_moonc_version()?;
     let bleeding_toolchain_version = ToolChainVersion {
