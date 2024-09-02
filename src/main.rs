@@ -1,5 +1,4 @@
 use std::{
-    io::Write,
     path::Path,
     time::{Duration, Instant},
 };
@@ -7,12 +6,15 @@ use std::{
 use chrono::{FixedOffset, Local};
 
 use clap::Parser;
-use moon_dashboard::cli;
+use moon_dashboard::git;
 use moon_dashboard::{
-    git,
-    util::{self, MoonCommand},
+    cli,
+    dashboard::{
+        BuildState, ExecuteResult, MoonBuildDashboard, MoonCommand, MooncakeSource, Status,
+        ToolChainVersion,
+    },
+    util::{get_moon_version, get_moonc_version, install_bleeding_release, install_stable_release},
 };
-use moon_dashboard::{util::MooncakeSource, Statistics};
 
 fn run_moon(workdir: &Path, args: &[&str]) -> anyhow::Result<Duration> {
     let start = Instant::now();
@@ -33,111 +35,13 @@ fn run_moon(workdir: &Path, args: &[&str]) -> anyhow::Result<Duration> {
     Ok(elapsed)
 }
 
-fn stat_moon(
-    workdir: &Path,
-    repo: &str,
-    rev: &str,
-    moon_version: &str,
-    moonc_version: &str,
-    cmd: MoonCommand,
-) -> anyhow::Result<Vec<Statistics>> {
-    let mut ss = vec![];
-    let mut durations: Vec<Option<Duration>> = vec![];
-    for _ in 0..2 {
-        let _ = run_moon(workdir, &["clean"]);
-        let r = run_moon(workdir, &cmd.args());
-        let status = r.is_err() as i32;
-        let d = r.ok();
-        durations.push(d);
-        let start_time = Local::now()
-            .with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
-            .format("%Y-%m-%d %H:%M:%S.%3f")
-            .to_string();
-        let elapsed = d.map(|d| d.as_millis() as u64);
-        let run_id = std::env::var("GITHUB_ACTION_RUN_ID").unwrap_or("0".into());
-        let run_number = std::env::var("GITHUB_ACTION_RUN_NUMBER").unwrap_or("0".into());
-        let stat = Statistics {
-            source: MooncakeSource::Git {
-                url: repo.to_string(),
-                rev: rev.to_string(),
-            },
-            command: cmd,
-            moon_version: moon_version.to_string(),
-            moonc_version: moonc_version.to_string(),
-            status,
-            elapsed,
-            start_time,
-            run_id,
-            run_number,
-        };
-        ss.push(stat);
-    }
-    let last = ss.last().unwrap().clone();
-    Ok(vec![last])
-}
-
-pub fn run(repo: &str) -> anyhow::Result<()> {
-    let tmp = tempfile::tempdir()?;
-    git::git_clone_to(repo, tmp.path(), "test")?;
-
-    let workdir = tmp.path().join("test");
-    let moon_version = util::moon_version()?;
-    let moonc_version = util::moonc_version()?;
-    let rev = git::get_git_short_hash(&workdir)?;
-
-    let mut logs = vec![];
-
-    logs.extend(stat_moon(
-        &workdir,
-        repo,
-        &rev,
-        &moon_version,
-        &moonc_version,
-        MoonCommand::Check,
-    )?);
-    logs.extend(stat_moon(
-        &workdir,
-        repo,
-        &rev,
-        &moon_version,
-        &moonc_version,
-        MoonCommand::Build,
-    )?);
-    logs.extend(stat_moon(
-        &workdir,
-        repo,
-        &rev,
-        &moon_version,
-        &moonc_version,
-        MoonCommand::Test,
-    )?);
-    if repo == "https://github.com/moonbitlang/core" {
-        logs.extend(stat_moon(
-            &workdir,
-            repo,
-            &rev,
-            &moon_version,
-            &moonc_version,
-            MoonCommand::Bundle,
-        )?);
-    }
-
-    let fp = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("webapp/public/data.jsonl")?;
-    let mut writer = std::io::BufWriter::new(fp);
-    for log in logs {
-        writeln!(writer, "{}", serde_json::to_string(&log)?)?;
-    }
-    writer.flush()?;
-    Ok(())
-}
-
-fn stat(cmd: cli::StatSubcommand) -> anyhow::Result<()> {
+fn get_mooncake_sources(cmd: &cli::StatSubcommand) -> anyhow::Result<Vec<MooncakeSource>> {
     let mut repo_list = vec![];
-    if let Some(r) = cmd.repo_url {
-        repo_list.push(r);
+    if let Some(r) = &cmd.repo_url {
+        repo_list.push(MooncakeSource::Git {
+            url: r.clone(),
+            rev: None,
+        });
     }
 
     if let Some(file) = &cmd.file {
@@ -145,33 +49,127 @@ fn stat(cmd: cli::StatSubcommand) -> anyhow::Result<()> {
         for line in content.lines() {
             let repo = line.trim();
             if !repo.is_empty() {
-                repo_list.push(repo.to_string());
+                repo_list.push(MooncakeSource::Git {
+                    url: repo.to_string(),
+                    rev: None,
+                });
             }
         }
     }
-
-    let mut results = vec![];
-    for r in repo_list {
-        results.push(run(&r));
-    }
-
-    for result in results {
-        match result {
-            Ok(()) => (),
-            Err(e) => eprintln!("Error processing repository: {}", e),
-        }
-    }
-    Ok(())
+    Ok(repo_list)
 }
 
-fn transform(_cmd: cli::TransformSubcommand) -> anyhow::Result<()> {
-    todo!()
+fn stat_mooncake(workdir: &Path, cmd: MoonCommand) -> anyhow::Result<ExecuteResult> {
+    let _ = run_moon(workdir, &["clean"]);
+
+    let r = run_moon(workdir, &cmd.args());
+    let status = if r.is_err() {
+        Status::Failure
+    } else {
+        Status::Success
+    };
+    let d = r.ok();
+    let start_time = Local::now()
+        .with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
+        .format("%Y-%m-%d %H:%M:%S.%3f")
+        .to_string();
+    let elapsed = d.map(|d| d.as_millis() as u64).unwrap_or(0);
+    let execute_result = ExecuteResult {
+        status,
+        start_time,
+        elapsed,
+    };
+    Ok(execute_result)
+}
+
+pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
+    let tmp = tempfile::tempdir()?;
+    match source {
+        MooncakeSource::Git { url, rev: _ } => {
+            git::git_clone_to(url, tmp.path(), "test")?;
+        }
+        MooncakeSource::MooncakesIO { .. } => {
+            todo!()
+        }
+    }
+    let workdir = tmp.path().join("test");
+    let check = stat_mooncake(&workdir, MoonCommand::Check)?;
+    let build = stat_mooncake(&workdir, MoonCommand::Build)?;
+    let test = stat_mooncake(&workdir, MoonCommand::Test)?;
+    Ok(BuildState {
+        source: source.clone(),
+        check,
+        build,
+        test,
+    })
+}
+
+fn stat(cmd: cli::StatSubcommand) -> anyhow::Result<MoonBuildDashboard> {
+    let run_id = std::env::var("GITHUB_ACTION_RUN_ID").unwrap_or("0".into());
+    let run_number = std::env::var("GITHUB_ACTION_RUN_NUMBER").unwrap_or("0".into());
+
+    install_stable_release()?;
+    let moon_version = get_moon_version()?;
+    let moonc_version = get_moonc_version()?;
+    let stable_toolchain_version = ToolChainVersion {
+        label: "stable".into(),
+        moon_version,
+        moonc_version,
+    };
+
+    let mooncake_sources = get_mooncake_sources(&cmd)?;
+    let mut stable_release_data = vec![];
+
+    for source in mooncake_sources {
+        let build_state = build(&source)?;
+        stable_release_data.push(build_state);
+    }
+
+    install_bleeding_release()?;
+    let moon_version = get_moon_version()?;
+    let moonc_version = get_moonc_version()?;
+    let bleeding_toolchain_version = ToolChainVersion {
+        label: "bleeding".into(),
+        moon_version,
+        moonc_version,
+    };
+
+    let mooncake_sources = get_mooncake_sources(&cmd)?;
+    let mut bleeding_release_data = vec![];
+
+    for source in mooncake_sources.iter() {
+        let build_state = build(source)?;
+        bleeding_release_data.push(build_state);
+    }
+
+    let result = MoonBuildDashboard {
+        run_id,
+        run_number,
+        sources: mooncake_sources,
+        start_time: Local::now().to_rfc3339(),
+        stable_toolchain_version,
+        stable_release_data,
+        bleeding_toolchain_version,
+        bleeding_release_data,
+    };
+    dbg!(&result);
+    Ok(result)
+}
+
+fn main0() -> anyhow::Result<()> {
+    let cli = cli::MoonBuildDashBoardCli::parse();
+    let res = match cli.subcommand {
+        cli::MoonBuildDashBoardSubcommands::Stat(cmd) => stat(cmd),
+    };
+    match res {
+        Ok(dashboard) => {
+            println!("{}", serde_json::to_string(&dashboard)?);
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
 }
 
 fn main() -> anyhow::Result<()> {
-    let cli = cli::MoonBuildDashBoardCli::parse();
-    match cli.subcommand {
-        cli::MoonBuildDashBoardSubcommands::Stat(cmd) => stat(cmd),
-        cli::MoonBuildDashBoardSubcommands::Transform(cmd) => transform(cmd),
-    }
+    main0()
 }
