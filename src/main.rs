@@ -11,8 +11,8 @@ use colored::Colorize;
 use moon_dashboard::{
     cli,
     dashboard::{
-        BuildState, ExecuteResult, MoonBuildDashboard, MoonCommand, MooncakeSource, Status,
-        ToolChainLabel, ToolChainVersion,
+        Backend, BackendState, BuildState, ExecuteResult, MoonBuildDashboard, MoonCommand,
+        MooncakeSource, Status, ToolChainLabel, ToolChainVersion,
     },
     util::{get_moon_version, get_moonc_version, install_bleeding_release, install_stable_release},
 };
@@ -42,6 +42,8 @@ fn run_moon(workdir: &Path, source: &MooncakeSource, args: &[&str]) -> anyhow::R
             args.join(" ").blue().bold(),
             elapsed.as_millis()
         )
+        .green()
+        .bold()
     );
     Ok(elapsed)
 }
@@ -129,14 +131,35 @@ pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
         }
     }
     let workdir = tmp.path().join("test");
-    let check = stat_mooncake(&workdir, source, MoonCommand::Check)?;
-    let build = stat_mooncake(&workdir, source, MoonCommand::Build)?;
-    let test = stat_mooncake(&workdir, source, MoonCommand::Test)?;
+    let check_wasm = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Wasm))?;
+    let check_wasm_gc = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::WasmGC))?;
+    let check_js = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Js))?;
+
+    let build_wasm = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Wasm))?;
+    let build_wasm_gc = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::WasmGC))?;
+    let build_js = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Js))?;
+
+    let test_wasm = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Wasm))?;
+    let test_wasm_gc = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::WasmGC))?;
+    let test_js = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Js))?;
+
     Ok(BuildState {
         source: source.clone(),
-        check,
-        build,
-        test,
+        check: BackendState {
+            wasm: check_wasm,
+            wasm_gc: check_wasm_gc,
+            js: check_js,
+        },
+        build: BackendState {
+            wasm: build_wasm,
+            wasm_gc: build_wasm_gc,
+            js: build_js,
+        },
+        test: BackendState {
+            wasm: test_wasm,
+            wasm_gc: test_wasm_gc,
+            js: test_js,
+        },
     })
 }
 

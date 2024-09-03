@@ -42,20 +42,37 @@ impl fmt::Display for MooncakeSource {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum Backend {
+    Wasm,
+    WasmGC,
+    Js,
+}
+
+impl Backend {
+    pub fn to_flag(&self) -> &str {
+        match self {
+            Backend::Wasm => "wasm",
+            Backend::WasmGC => "wasm-gc",
+            Backend::Js => "js",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum MoonCommand {
-    Check,
-    Build,
-    Test,
-    Bundle,
+    Check(Backend),
+    Build(Backend),
+    Test(Backend),
 }
 
 impl MoonCommand {
     pub fn args(&self) -> Vec<&str> {
         match self {
-            MoonCommand::Check => vec!["check", "-q"],
-            MoonCommand::Build => vec!["build", "-q"],
-            MoonCommand::Test => vec!["test", "-q", "--build-only"],
-            MoonCommand::Bundle => vec!["bundle", "-q"],
+            MoonCommand::Check(backend) => vec!["check", "-q", "--target", backend.to_flag()],
+            MoonCommand::Build(backend) => vec!["build", "-q", "--target", backend.to_flag()],
+            MoonCommand::Test(backend) => {
+                vec!["test", "-q", "--build-only", "--target", backend.to_flag()]
+            }
         }
     }
 }
@@ -102,9 +119,16 @@ pub struct ExecuteResult {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct BackendState {
+    pub wasm: ExecuteResult,
+    pub wasm_gc: ExecuteResult,
+    pub js: ExecuteResult,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BuildState {
     pub source: MooncakeSource,
-    pub check: ExecuteResult,
-    pub build: ExecuteResult,
-    pub test: ExecuteResult,
+    pub check: BackendState,
+    pub build: BackendState,
+    pub test: BackendState,
 }

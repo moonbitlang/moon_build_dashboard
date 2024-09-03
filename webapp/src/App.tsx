@@ -5,7 +5,6 @@ type MooncakeSource =
   | { Git: { url: string; rev?: string } };
 
 type MoonCommand = "Check" | "Build" | "Test";
-
 type ToolChainLabel = "Stable" | "Bleeding";
 
 interface ToolChainVersion {
@@ -33,11 +32,17 @@ interface ExecuteResult {
   elapsed: number;
 }
 
+interface BackendState {
+  wasm: ExecuteResult;
+  wasm_gc: ExecuteResult;
+  js: ExecuteResult;
+}
+
 interface BuildState {
   source: MooncakeSource;
-  check: ExecuteResult;
-  build: ExecuteResult;
-  test: ExecuteResult;
+  check: BackendState;
+  build: BackendState;
+  test: BackendState;
 }
 
 async function get_data(): Promise<MoonBuildDashboard> {
@@ -79,9 +84,23 @@ const App = () => {
     return status === "Success" ? `${elapsed ?? '-'} ms` : "Failed";
   };
 
+  const renderBackendState = (backendState: BackendState) => (
+    <>
+      <td className={`py-2 px-4 ${getStatusStyle(backendState.wasm.status)} border-r`}>
+        {getStatusText(backendState.wasm.status, backendState.wasm.elapsed)}
+      </td>
+      <td className={`py-2 px-4 ${getStatusStyle(backendState.wasm_gc.status)} border-r`}>
+        {getStatusText(backendState.wasm_gc.status, backendState.wasm_gc.elapsed)}
+      </td>
+      <td className={`py-2 px-4 ${getStatusStyle(backendState.js.status)} border-r`}>
+        {getStatusText(backendState.js.status, backendState.js.elapsed)}
+      </td>
+    </>
+  );
+
   return (
     <div className="p-4 bg-gray-100 min-h-screen flex justify-center">
-      <div className="max-w-[1200px] w-full">
+      <div className="w-full">
         <h1 className="text-2xl font-bold mb-4">Moon Build Dashboard</h1>
 
         {error ? (
@@ -91,14 +110,14 @@ const App = () => {
             <table className="min-w-full table-auto bg-white shadow-md rounded-lg overflow-hidden">
               <thead>
                 <tr className="bg-gray-200">
-                  <th rowSpan={2} className="py-2 px-4 text-left w-1/4 border-r">Repository</th>
-                  <th colSpan={4} className="py-2 px-4 text-center w-1/2 bg-blue-500 text-white border-r">
+                  <th rowSpan={3} className="py-2 px-4 text-left w-1/4 border-r">Repository</th>
+                  <th colSpan={9} className="py-2 px-4 text-center bg-blue-500 text-white border-r">
                     Stable
                     <div className="text-xs mt-1 font-normal">
                       {data.stable_toolchain_version.moon_version} / {data.stable_toolchain_version.moonc_version}
                     </div>
                   </th>
-                  <th colSpan={4} className="py-2 px-4 text-center w-1/2 bg-green-500 text-white">
+                  <th colSpan={9} className="py-2 px-4 text-center bg-green-500 text-white">
                     Bleeding
                     <div className="text-xs mt-1 font-normal">
                       {data.bleeding_toolchain_version.moon_version} / {data.bleeding_toolchain_version.moonc_version}
@@ -106,19 +125,37 @@ const App = () => {
                   </th>
                 </tr>
                 <tr className="bg-gray-100">
-                  <th className="py-1 px-4 text-left text-sm border-r">Check</th>
-                  <th className="py-1 px-4 text-left text-sm border-r">Build</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">Test (build only)</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">Start Time</th>
-                  <th className="py-1 px-4 text-left text-sm border-r">Check</th>
-                  <th className="py-1 px-4 text-left text-sm border-r">Build</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">Test (build only)</th>
-                  <th className="py-1 px-4 text-left text-xs">Start Time</th>
+                  <th colSpan={3} className="py-1 px-4 text-center text-sm border-r">Check</th>
+                  <th colSpan={3} className="py-1 px-4 text-center text-sm border-r">Build</th>
+                  <th colSpan={3} className="py-1 px-4 text-center text-sm">Test</th>
+                  <th colSpan={3} className="py-1 px-4 text-center text-sm border-r">Check</th>
+                  <th colSpan={3} className="py-1 px-4 text-center text-sm border-r">Build</th>
+                  <th colSpan={3} className="py-1 px-4 text-center text-sm">Test</th>
+                </tr>
+                <tr className="bg-gray-100">
+                  <th className="py-1 px-4 text-left text-xs border-r">wasm</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">wasm gc</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">js</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">wasm</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">wasm gc</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">js</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">wasm</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">wasm gc</th>
+                  <th className="py-1 px-4 text-left text-xs">js</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">wasm</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">wasm gc</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">js</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">wasm</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">wasm gc</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">js</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">wasm</th>
+                  <th className="py-1 px-4 text-left text-xs border-r">wasm gc</th>
+                  <th className="py-1 px-4 text-left text-xs">JS</th>
                 </tr>
               </thead>
               <tbody>
                 {data.stable_release_data.map((entry, index) => (
-                  <tr key={index} className="border-b hover:bg-gray-50">
+                  <tr key={index} className="border-b hover:bg-gray-50 text-xs">
                     <td className="py-2 px-4">
                       <a
                         href={
@@ -135,26 +172,12 @@ const App = () => {
                           : ""}
                       </a>
                     </td>
-                    <td className={`py-2 px-4 ${getStatusStyle(entry.check.status)} border-r`}>
-                      {getStatusText(entry.check.status, entry.check.elapsed)}
-                    </td>
-                    <td className={`py-2 px-4 ${getStatusStyle(entry.build.status)} border-r`}>
-                      {getStatusText(entry.build.status, entry.build.elapsed)}
-                    </td>
-                    <td className={`py-2 px-4 ${getStatusStyle(entry.test.status)} border-r text-xs`}>
-                      {getStatusText(entry.test.status, entry.test.elapsed)}
-                    </td>
-                    <td className="py-2 px-4 text-xs border-r">{entry.test.start_time}</td>
-                    <td className={`py-2 px-4 ${getStatusStyle(data.bleeding_release_data[index].check.status)} border-r`}>
-                      {getStatusText(data.bleeding_release_data[index].check.status, data.bleeding_release_data[index].check.elapsed)}
-                    </td>
-                    <td className={`py-2 px-4 ${getStatusStyle(data.bleeding_release_data[index].build.status)} border-r`}>
-                      {getStatusText(data.bleeding_release_data[index].build.status, data.bleeding_release_data[index].build.elapsed)}
-                    </td>
-                    <td className={`py-2 px-4 ${getStatusStyle(data.bleeding_release_data[index].test.status)} border-r text-xs`}>
-                      {getStatusText(data.bleeding_release_data[index].test.status, data.bleeding_release_data[index].test.elapsed)}
-                    </td>
-                    <td className="py-2 px-4 text-xs">{data.bleeding_release_data[index].test.start_time}</td>
+                    {renderBackendState(entry.check)}
+                    {renderBackendState(entry.build)}
+                    {renderBackendState(entry.test)}
+                    {renderBackendState(data.bleeding_release_data[index].check)}
+                    {renderBackendState(data.bleeding_release_data[index].build)}
+                    {renderBackendState(data.bleeding_release_data[index].test)}
                   </tr>
                 ))}
               </tbody>
