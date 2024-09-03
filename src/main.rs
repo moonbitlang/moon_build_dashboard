@@ -143,9 +143,13 @@ pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
     let mut cbts = vec![];
 
     match source {
-        MooncakeSource::Git { url, rev, index } => {
+        MooncakeSource::Git {
+            url: _,
+            rev,
+            index: _,
+        } => {
             for h in rev {
-                git::git_checkout(&workdir, &h)?;
+                git::git_checkout(&workdir, h)?;
                 let check_wasm =
                     stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Wasm))?;
                 let check_wasm_gc =
