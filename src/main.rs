@@ -128,46 +128,14 @@ fn stat_mooncake(
 pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
     let tmp = tempfile::tempdir()?;
     let mut cbts = vec![];
+
     match source {
         MooncakeSource::Git { url, rev, index: _ } => {
             git::git_clone_to(url, tmp.path(), "test")?;
             let workdir = tmp.path().join("test");
             for h in rev {
                 git::git_checkout(&workdir, h)?;
-                let check_wasm =
-                    stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Wasm))?;
-                let check_wasm_gc =
-                    stat_mooncake(&workdir, source, MoonCommand::Check(Backend::WasmGC))?;
-                let check_js = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Js))?;
-
-                let build_wasm =
-                    stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Wasm))?;
-                let build_wasm_gc =
-                    stat_mooncake(&workdir, source, MoonCommand::Build(Backend::WasmGC))?;
-                let build_js = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Js))?;
-
-                let test_wasm = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Wasm))?;
-                let test_wasm_gc =
-                    stat_mooncake(&workdir, source, MoonCommand::Test(Backend::WasmGC))?;
-                let test_js = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Js))?;
-
-                cbts.push(CBT {
-                    check: BackendState {
-                        wasm: check_wasm,
-                        wasm_gc: check_wasm_gc,
-                        js: check_js,
-                    },
-                    build: BackendState {
-                        wasm: build_wasm,
-                        wasm_gc: build_wasm_gc,
-                        js: build_js,
-                    },
-                    test: BackendState {
-                        wasm: test_wasm,
-                        wasm_gc: test_wasm_gc,
-                        js: test_js,
-                    },
-                });
+                cbts.push(run_matrix(&workdir, source)?);
             }
         }
         MooncakeSource::MooncakesIO {
@@ -178,40 +146,7 @@ pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
             for v in version {
                 mooncakesio::download_to(name, &v, tmp.path())?;
                 let workdir = tmp.path().join(v);
-                let check_wasm =
-                    stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Wasm))?;
-                let check_wasm_gc =
-                    stat_mooncake(&workdir, source, MoonCommand::Check(Backend::WasmGC))?;
-                let check_js = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Js))?;
-
-                let build_wasm =
-                    stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Wasm))?;
-                let build_wasm_gc =
-                    stat_mooncake(&workdir, source, MoonCommand::Build(Backend::WasmGC))?;
-                let build_js = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Js))?;
-
-                let test_wasm = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Wasm))?;
-                let test_wasm_gc =
-                    stat_mooncake(&workdir, source, MoonCommand::Test(Backend::WasmGC))?;
-                let test_js = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Js))?;
-
-                cbts.push(CBT {
-                    check: BackendState {
-                        wasm: check_wasm,
-                        wasm_gc: check_wasm_gc,
-                        js: check_js,
-                    },
-                    build: BackendState {
-                        wasm: build_wasm,
-                        wasm_gc: build_wasm_gc,
-                        js: build_js,
-                    },
-                    test: BackendState {
-                        wasm: test_wasm,
-                        wasm_gc: test_wasm_gc,
-                        js: test_js,
-                    },
-                });
+                cbts.push(run_matrix(&workdir, source)?);
             }
         }
     }
@@ -222,6 +157,37 @@ pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
     })
 }
 
+fn run_matrix(workdir: &Path, source: &MooncakeSource) -> anyhow::Result<CBT> {
+    let check_wasm = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Wasm))?;
+    let check_wasm_gc = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::WasmGC))?;
+    let check_js = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Js))?;
+
+    let build_wasm = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Wasm))?;
+    let build_wasm_gc = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::WasmGC))?;
+    let build_js = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Js))?;
+
+    let test_wasm = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Wasm))?;
+    let test_wasm_gc = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::WasmGC))?;
+    let test_js = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Js))?;
+
+    Ok(CBT {
+        check: BackendState {
+            wasm: check_wasm,
+            wasm_gc: check_wasm_gc,
+            js: check_js,
+        },
+        build: BackendState {
+            wasm: build_wasm,
+            wasm_gc: build_wasm_gc,
+            js: build_js,
+        },
+        test: BackendState {
+            wasm: test_wasm,
+            wasm_gc: test_wasm_gc,
+            js: test_js,
+        },
+    })
+}
 fn stat(cmd: cli::StatSubcommand) -> anyhow::Result<MoonBuildDashboard> {
     let run_id = std::env::var("GITHUB_ACTION_RUN_ID").unwrap_or("0".into());
     let run_number = std::env::var("GITHUB_ACTION_RUN_NUMBER").unwrap_or("0".into());
