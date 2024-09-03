@@ -45,7 +45,7 @@ interface CBT {
 
 interface BuildState {
   source: number;
-  cbts: CBT[];
+  cbts: (CBT | null)[];
 }
 
 async function get_data(): Promise<MoonBuildDashboard> {
@@ -84,7 +84,7 @@ const App = () => {
   };
 
   const getStatusText = (status: Status, elapsed: number | null): string => {
-    return status === "Success" ? `${elapsed ?? '-'} ms` : "Failed";
+    return status === "Success" ? `${elapsed ?? '-'}` : "x";
   };
 
   const renderBackendState = (backendState: BackendState) => (
@@ -228,32 +228,32 @@ const App = () => {
                   </th>
                 </tr>
                 <tr className="bg-gray-100">
-                  <th colSpan={3} className="py-1 px-4 text-center text-sm border-r">Check</th>
-                  <th colSpan={3} className="py-1 px-4 text-center text-sm border-r">Build</th>
-                  <th colSpan={3} className="py-1 px-4 text-center text-sm">Test</th>
-                  <th colSpan={3} className="py-1 px-4 text-center text-sm border-r">Check</th>
-                  <th colSpan={3} className="py-1 px-4 text-center text-sm border-r">Build</th>
-                  <th colSpan={3} className="py-1 px-4 text-center text-sm">Test</th>
+                  <th colSpan={3} className="py-1 px-4 text-center text-sm border-r">Check(ms)</th>
+                  <th colSpan={3} className="py-1 px-4 text-center text-sm border-r">Build(ms)</th>
+                  <th colSpan={3} className="py-1 px-4 text-center text-sm">Test(ms)</th>
+                  <th colSpan={3} className="py-1 px-4 text-center text-sm border-r">Check(ms)</th>
+                  <th colSpan={3} className="py-1 px-4 text-center text-sm border-r">Build(ms)</th>
+                  <th colSpan={3} className="py-1 px-4 text-center text-sm">Test(ms)</th>
                 </tr>
                 <tr className="bg-gray-100">
-                  <th className="py-1 px-4 text-left text-xs border-r">wasm</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">wasm gc</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">js</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">wasm</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">wasm gc</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">js</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">wasm</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">wasm gc</th>
-                  <th className="py-1 px-4 text-left text-xs">js</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">wasm</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">wasm gc</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">js</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">wasm</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">wasm gc</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">js</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">wasm</th>
-                  <th className="py-1 px-4 text-left text-xs border-r">wasm gc</th>
-                  <th className="py-1 px-4 text-left text-xs">JS</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">wasm</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">wasm gc</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">js</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">wasm</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">wasm gc</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">js</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">wasm</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">wasm gc</th>
+                  <th className="py-1 px-4 text-center text-xs">js</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">wasm</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">wasm gc</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">js</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">wasm</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">wasm gc</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">js</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">wasm</th>
+                  <th className="py-1 px-4 text-center text-xs border-r">wasm gc</th>
+                  <th className="py-1 px-4 text-center text-xs">JS</th>
                 </tr>
               </thead>
               <tbody>

@@ -117,5 +117,5 @@ pub struct CBT {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BuildState {
     pub source: usize,
-    pub cbts: Vec<CBT>,
+    pub cbts: Vec<Option<CBT>>,
 }

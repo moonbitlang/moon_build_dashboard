@@ -50,6 +50,7 @@ fn run_moon(workdir: &Path, source: &MooncakeSource, args: &[&str]) -> anyhow::R
 }
 
 fn get_mooncake_sources(cmd: &cli::StatSubcommand) -> anyhow::Result<Vec<MooncakeSource>> {
+    let db = mooncakesio::get_all_mooncakes()?;
     let mut repo_list = vec![];
     if let Some(r) = &cmd.repo_url {
         repo_list.push(MooncakeSource::Git {
@@ -63,14 +64,16 @@ fn get_mooncake_sources(cmd: &cli::StatSubcommand) -> anyhow::Result<Vec<Mooncak
         let content = std::fs::read_to_string(file)?;
         for line in content.lines() {
             let s = line.trim();
-            if s.starts_with("https://") {
+            if s.starts_with("#") || s.trim().is_empty() {
+                continue;
+            } else if s.starts_with("https://") {
                 // https://github.com/moonbitlang/core
                 // https://github.com/moonbitlang/core hash1 hash2 hash3
                 let parts: Vec<&str> = s.split(' ').collect();
                 if parts.len() == 1 {
                     repo_list.push(MooncakeSource::Git {
                         url: parts[0].to_string(),
-                        rev: vec![],
+                        rev: vec!["HEAD".to_string()],
                         index: repo_list.len(),
                     });
                 } else {
@@ -85,8 +88,23 @@ fn get_mooncake_sources(cmd: &cli::StatSubcommand) -> anyhow::Result<Vec<Mooncak
                 // moonbitlang/core 0.1.0 0.2.0
                 let parts: Vec<&str> = s.split(' ').collect();
                 let name = parts[0].to_string();
-                let version: Vec<String> =
+                let mut xs: Vec<String> =
                     parts[1..].iter().copied().map(|s| s.to_string()).collect();
+                if xs.is_empty() {
+                    xs.push("latest".to_string());
+                }
+                let mut version: Vec<String> = xs
+                    .iter()
+                    .map(|s| {
+                        if s == "latest" {
+                            db.get_latest_version(&name).unwrap().to_string()
+                        } else {
+                            s.to_string()
+                        }
+                    })
+                    .collect();
+                version.sort();
+                version.dedup();
                 repo_list.push(MooncakeSource::MooncakesIO {
                     name,
                     version,
@@ -134,8 +152,12 @@ pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
             git::git_clone_to(url, tmp.path(), "test")?;
             let workdir = tmp.path().join("test");
             for h in rev {
-                git::git_checkout(&workdir, h)?;
-                cbts.push(run_matrix(&workdir, source)?);
+                if let Err(e) = git::git_checkout(&workdir, h) {
+                    eprintln!("Failed to checkout {}: {}", h, e);
+                    cbts.push(None);
+                    continue;
+                }
+                cbts.push(run_matrix(&workdir, source).ok());
             }
         }
         MooncakeSource::MooncakesIO {
@@ -144,9 +166,13 @@ pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
             index: _,
         } => {
             for v in version {
-                mooncakesio::download_to(name, &v, tmp.path())?;
+                if let Err(e) = mooncakesio::download_to(name, &v, tmp.path()) {
+                    eprintln!("Failed to download {}/{}: {}", name, v, e);
+                    cbts.push(None);
+                    continue;
+                }
                 let workdir = tmp.path().join(v);
-                cbts.push(run_matrix(&workdir, source)?);
+                cbts.push(run_matrix(&workdir, source).ok());
             }
         }
     }

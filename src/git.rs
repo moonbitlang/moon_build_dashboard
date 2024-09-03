@@ -21,7 +21,7 @@ pub fn get_git_short_hash(workdir: &Path) -> anyhow::Result<String> {
 pub fn git_clone_to(repo: &str, workdir: &Path, dst: &str) -> anyhow::Result<()> {
     let mut cmd = std::process::Command::new("git")
         .current_dir(workdir)
-        .args(["clone", repo, dst, "--depth", "1"])
+        .args(["clone", repo, dst])
         .spawn()?;
     cmd.wait()?;
     Ok(())
