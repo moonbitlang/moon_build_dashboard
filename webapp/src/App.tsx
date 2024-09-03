@@ -208,13 +208,13 @@ const App = () => {
                 <tr className="bg-gray-200">
                   <th rowSpan={3} className="py-2 px-4 text-left w-1/4 border-r">Repository</th>
                   <th rowSpan={3} className="py-2 px-4 text-left w-1/4 border-r">Version</th>
-                  <th colSpan={9} className="py-2 px-4 text-center bg-blue-500 text-white border-r">
+                  <th colSpan={9} className="py-2 px-4 text-center bg-green-500 text-white border-r">
                     Stable
                     <div className="text-xs mt-1 font-normal">
                       {data.stable_toolchain_version.moon_version} / {data.stable_toolchain_version.moonc_version}
                     </div>
                   </th>
-                  <th colSpan={9} className="py-2 px-4 text-center bg-green-500 text-white">
+                  <th colSpan={9} className="py-2 px-4 text-center bg-red-600 text-white">
                     Bleeding
                     <div className="text-xs mt-1 font-normal">
                       {data.bleeding_toolchain_version.moon_version} / {data.bleeding_toolchain_version.moonc_version}
