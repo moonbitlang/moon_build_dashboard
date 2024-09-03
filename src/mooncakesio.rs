@@ -13,7 +13,7 @@ pub fn download_to(name: &str, version: &str, dst: &Path) -> anyhow::Result<()> 
     let output = std::process::Command::new("curl")
         .arg("-o")
         .arg(&output_zip)
-        .arg(&url)
+        .arg(format!("'{}'", url))
         .output()?;
     if !output.status.success() {
         anyhow::bail!("failed to download {}", url)
@@ -25,9 +25,6 @@ pub fn download_to(name: &str, version: &str, dst: &Path) -> anyhow::Result<()> 
         .arg(dst.join(version))
         .output()?;
     if !output.status.success() {
-        dbg!(name, version, dst);
-        dbg!(&output_zip);
-        dbg!(dst.join(version));
         anyhow::bail!("failed to unzip {}", output_zip)
     }
 
