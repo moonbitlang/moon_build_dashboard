@@ -4,7 +4,6 @@ type MooncakeSource =
   | { MooncakesIO: { name: string; version: string[]; index: number } }
   | { Git: { url: string; rev: string[]; index: number } };
 
-type MoonCommand = "Check" | "Build" | "Test";
 type ToolChainLabel = "Stable" | "Bleeding";
 
 interface ToolChainVersion {
@@ -111,6 +110,7 @@ const App = () => {
       const source = sources[stableEntry.source];
       const isGit = "Git" in source;
       const versions = isGit ? source.Git.rev : source.MooncakesIO.version;
+      const rowSpan = versions.length; // Number of versions determines the row span
   
       return versions.map((_, versionIndex) => {
         const bleedingEntry = bleedingData[index];
@@ -119,18 +119,25 @@ const App = () => {
   
         return (
           <tr key={`${index}-${versionIndex}`} className="border-b hover:bg-gray-50 text-xs">
-            <td className="py-2 px-4">
+            {/* Only display the source name in the first row */}
+            {versionIndex === 0 && (
+              <td className="py-2 px-4" rowSpan={rowSpan}>
+                {isGit ? source.Git.url.replace("https://github.com/", "") : source.MooncakesIO.name}
+              </td>
+            )}
+            {/* Display the version as a clickable link */}
+            <td className="py-2 px-4 text-gray-500">
               <a
-                href={isGit ? source.Git.url : "#"}
+                href={isGit ? `${source.Git.url}/tree/${versions[versionIndex]}` : "#"}
                 className="text-blue-600 hover:text-blue-800"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {isGit ? source.Git.url.replace("https://github.com/", "") : source.MooncakesIO.name}
+                {versions[versionIndex]}
               </a>
-              <span className="ml-2 text-gray-500">v{versions[versionIndex]}</span>
             </td>
   
+            {/* Stable Data */}
             {stableCBT ? (
               <>
                 {renderBackendState(stableCBT.check)}
@@ -143,6 +150,7 @@ const App = () => {
               </td>
             )}
   
+            {/* Bleeding Data */}
             {bleedingCBT ? (
               <>
                 {renderBackendState(bleedingCBT.check)}
@@ -159,7 +167,7 @@ const App = () => {
       });
     });
   };
-  
+
   return (
     <div className="p-4 bg-gray-100 min-h-screen flex justify-center">
       <div className="w-full">
@@ -173,6 +181,7 @@ const App = () => {
               <thead>
                 <tr className="bg-gray-200">
                   <th rowSpan={3} className="py-2 px-4 text-left w-1/4 border-r">Repository</th>
+                  <th rowSpan={3} className="py-2 px-4 text-left w-1/4 border-r">Version</th>
                   <th colSpan={9} className="py-2 px-4 text-center bg-blue-500 text-white border-r">
                     Stable
                     <div className="text-xs mt-1 font-normal">
@@ -226,6 +235,6 @@ const App = () => {
       </div>
     </div>
   );
-};  
+};
 
 export default App;
