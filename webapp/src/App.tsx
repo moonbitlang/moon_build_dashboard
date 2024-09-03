@@ -122,19 +122,34 @@ const App = () => {
             {/* Only display the source name in the first row */}
             {versionIndex === 0 && (
               <td className="py-2 px-4" rowSpan={rowSpan}>
-                {isGit ? source.Git.url.replace("https://github.com/", "") : source.MooncakesIO.name}
+                {isGit ? (
+                  source.Git.url.replace("https://github.com/", "")
+                ) : (
+                  <a
+                    href={`https://mooncakes.io/docs/#/${source.MooncakesIO.name}/`}
+                    className="text-blue-600 hover:text-blue-800"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {source.MooncakesIO.name}
+                  </a>
+                )}
               </td>
             )}
-            {/* Display the version as a clickable link */}
+            {/* Display the version without a link if it is MooncakesIO */}
             <td className="py-2 px-4 text-gray-500">
-              <a
-                href={isGit ? `${source.Git.url}/tree/${versions[versionIndex]}` : "#"}
-                className="text-blue-600 hover:text-blue-800"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {versions[versionIndex]}
-              </a>
+              {isGit ? (
+                <a
+                  href={`${source.Git.url}/tree/${versions[versionIndex]}`}
+                  className="text-blue-600 hover:text-blue-800"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {versions[versionIndex]}
+                </a>
+              ) : (
+                versions[versionIndex]
+              )}
             </td>
   
             {/* Stable Data */}
@@ -167,6 +182,7 @@ const App = () => {
       });
     });
   };
+  
 
   return (
     <div className="p-4 bg-gray-100 min-h-screen flex justify-center">
