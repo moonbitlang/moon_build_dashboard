@@ -209,15 +209,21 @@ const App = () => {
                   <th rowSpan={3} className="py-2 px-4 text-left w-1/4 border-r">Repository</th>
                   <th rowSpan={3} className="py-2 px-4 text-left w-1/4 border-r">Version</th>
                   <th colSpan={9} className="py-2 px-4 text-center bg-green-500 text-white border-r">
-                    Stable
+                    Stable Release
                     <div className="text-xs mt-1 font-normal">
-                      {data.stable_toolchain_version.moon_version} / {data.stable_toolchain_version.moonc_version}
+                      {data.stable_toolchain_version.moon_version} / moonc {data.stable_toolchain_version.moonc_version}
                     </div>
                   </th>
-                  <th colSpan={9} className="py-2 px-4 text-center bg-red-600 text-white">
-                    Bleeding
+                  <th
+                    colSpan={9}
+                    className="py-2 px-4 text-center bg-red-600 text-white relative overflow-hidden"
+                  >
+                    <span className="absolute inset-0 flex items-center justify-left text-6xl text-yellow-900 opacity-40">
+                      ⚡️
+                    </span>
+                    Bleeding Edge Release
                     <div className="text-xs mt-1 font-normal">
-                      {data.bleeding_toolchain_version.moon_version} / {data.bleeding_toolchain_version.moonc_version}
+                      {data.bleeding_toolchain_version.moon_version} / moonc {data.bleeding_toolchain_version.moonc_version}
                     </div>
                   </th>
                 </tr>
