@@ -118,12 +118,22 @@ const App = () => {
         const bleedingCBT = bleedingEntry?.cbts[versionIndex];
   
         return (
-          <tr key={`${index}-${versionIndex}`} className="border-b hover:bg-gray-50 text-xs">
+          <tr key={`${index}-${versionIndex}`} className="border-b hover:bg-gray-50 text-sm">
             {/* Only display the source name in the first row */}
             {versionIndex === 0 && (
               <td className="py-2 px-4" rowSpan={rowSpan}>
                 {isGit ? (
-                  source.Git.url.replace("https://github.com/", "")
+                  <>
+                    <i className="fab fa-github text-gray-700 mr-2"></i>
+                    <a
+                      href={source.Git.url}
+                      className="text-blue-600 hover:text-blue-800"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {source.Git.url.replace("https://github.com/", "")}
+                    </a>
+                  </>
                 ) : (
                   <a
                     href={`https://mooncakes.io/docs/#/${source.MooncakesIO.name}/`}
