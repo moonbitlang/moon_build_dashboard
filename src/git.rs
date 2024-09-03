@@ -26,3 +26,12 @@ pub fn git_clone_to(repo: &str, workdir: &Path, dst: &str) -> anyhow::Result<()>
     cmd.wait()?;
     Ok(())
 }
+
+pub fn git_checkout(workdir: &Path, rev: &str) -> anyhow::Result<()> {
+    let mut cmd = std::process::Command::new("git")
+        .current_dir(workdir)
+        .args(["checkout", rev])
+        .spawn()?;
+    cmd.wait()?;
+    Ok(())
+}

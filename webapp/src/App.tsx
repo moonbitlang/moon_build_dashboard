@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
 type MooncakeSource = 
-  | { MooncakesIO: { name: string; version?: string } }
-  | { Git: { url: string; rev?: string } };
+  | { MooncakesIO: { name: string; version: string[]; index: number } }
+  | { Git: { url: string; rev: string[]; index: number } };
 
 type MoonCommand = "Check" | "Build" | "Test";
 type ToolChainLabel = "Stable" | "Bleeding";
@@ -38,11 +38,15 @@ interface BackendState {
   js: ExecuteResult;
 }
 
-interface BuildState {
-  source: MooncakeSource;
+interface CBT {
   check: BackendState;
   build: BackendState;
   test: BackendState;
+}
+
+interface BuildState {
+  source: number;
+  cbts: CBT[];
 }
 
 async function get_data(): Promise<MoonBuildDashboard> {
@@ -98,11 +102,69 @@ const App = () => {
     </>
   );
 
+  const renderTableRows = (
+    stableData: BuildState[],
+    bleedingData: BuildState[],
+    sources: MooncakeSource[]
+  ) => {
+    return stableData.map((stableEntry, index) => {
+      const source = sources[stableEntry.source];
+      const isGit = "Git" in source;
+      const versions = isGit ? source.Git.rev : source.MooncakesIO.version;
+  
+      return versions.map((_, versionIndex) => {
+        const bleedingEntry = bleedingData[index];
+        const stableCBT = stableEntry.cbts[versionIndex];
+        const bleedingCBT = bleedingEntry?.cbts[versionIndex];
+  
+        return (
+          <tr key={`${index}-${versionIndex}`} className="border-b hover:bg-gray-50 text-xs">
+            <td className="py-2 px-4">
+              <a
+                href={isGit ? source.Git.url : "#"}
+                className="text-blue-600 hover:text-blue-800"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {isGit ? source.Git.url.replace("https://github.com/", "") : source.MooncakesIO.name}
+              </a>
+              <span className="ml-2 text-gray-500">v{versions[versionIndex]}</span>
+            </td>
+  
+            {stableCBT ? (
+              <>
+                {renderBackendState(stableCBT.check)}
+                {renderBackendState(stableCBT.build)}
+                {renderBackendState(stableCBT.test)}
+              </>
+            ) : (
+              <td colSpan={9} className="py-2 px-4 text-center text-gray-500">
+                No stable data available
+              </td>
+            )}
+  
+            {bleedingCBT ? (
+              <>
+                {renderBackendState(bleedingCBT.check)}
+                {renderBackendState(bleedingCBT.build)}
+                {renderBackendState(bleedingCBT.test)}
+              </>
+            ) : (
+              <td colSpan={9} className="py-2 px-4 text-center text-gray-500">
+                No bleeding data available
+              </td>
+            )}
+          </tr>
+        );
+      });
+    });
+  };
+  
   return (
     <div className="p-4 bg-gray-100 min-h-screen flex justify-center">
       <div className="w-full">
         <h1 className="text-2xl font-bold mb-4">Moon Build Dashboard</h1>
-
+  
         {error ? (
           <p className="text-red-500 text-center">{error}</p>
         ) : data ? (
@@ -154,32 +216,7 @@ const App = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.stable_release_data.map((entry, index) => (
-                  <tr key={index} className="border-b hover:bg-gray-50 text-xs">
-                    <td className="py-2 px-4">
-                      <a
-                        href={
-                          "Git" in entry.source
-                            ? entry.source.Git.url
-                            : "#"
-                        }
-                        className="text-blue-600 hover:text-blue-800"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {entry.source && "Git" in entry.source
-                          ? entry.source.Git.url.replace("https://github.com/", "")
-                          : ""}
-                      </a>
-                    </td>
-                    {renderBackendState(entry.check)}
-                    {renderBackendState(entry.build)}
-                    {renderBackendState(entry.test)}
-                    {renderBackendState(data.bleeding_release_data[index].check)}
-                    {renderBackendState(data.bleeding_release_data[index].build)}
-                    {renderBackendState(data.bleeding_release_data[index].test)}
-                  </tr>
-                ))}
+                {renderTableRows(data.stable_release_data, data.bleeding_release_data, data.sources)}
               </tbody>
             </table>
           </div>
@@ -189,6 +226,6 @@ const App = () => {
       </div>
     </div>
   );
-};
+};  
 
 export default App;

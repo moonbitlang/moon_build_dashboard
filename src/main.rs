@@ -12,7 +12,7 @@ use moon_dashboard::{
     cli,
     dashboard::{
         Backend, BackendState, BuildState, ExecuteResult, MoonBuildDashboard, MoonCommand,
-        MooncakeSource, Status, ToolChainLabel, ToolChainVersion,
+        MooncakeSource, Status, ToolChainLabel, ToolChainVersion, CBT,
     },
     util::{get_moon_version, get_moonc_version, install_bleeding_release, install_stable_release},
 };
@@ -22,7 +22,7 @@ fn run_moon(workdir: &Path, source: &MooncakeSource, args: &[&str]) -> anyhow::R
     let start = Instant::now();
     eprintln!(
         "{}",
-        format!("RUN moon {} for {}", args.join(" "), source)
+        format!("RUN moon {} for {:?}", args.join(" "), source)
             .blue()
             .bold()
     );
@@ -53,7 +53,8 @@ fn get_mooncake_sources(cmd: &cli::StatSubcommand) -> anyhow::Result<Vec<Mooncak
     if let Some(r) = &cmd.repo_url {
         repo_list.push(MooncakeSource::Git {
             url: r.clone(),
-            rev: None,
+            rev: vec![],
+            index: 0,
         });
     }
 
@@ -62,31 +63,34 @@ fn get_mooncake_sources(cmd: &cli::StatSubcommand) -> anyhow::Result<Vec<Mooncak
         for line in content.lines() {
             let s = line.trim();
             if s.starts_with("https://") {
+                // https://github.com/moonbitlang/core
+                // https://github.com/moonbitlang/core hash1 hash2 hash3
                 let parts: Vec<&str> = s.split(' ').collect();
-                if parts.len() == 2 {
+                if parts.len() == 1 {
                     repo_list.push(MooncakeSource::Git {
                         url: parts[0].to_string(),
-                        rev: Some(parts[1].to_string()),
+                        rev: vec![],
+                        index: repo_list.len(),
                     });
                 } else {
                     repo_list.push(MooncakeSource::Git {
-                        url: s.to_string(),
-                        rev: None,
+                        url: parts[0].to_string(),
+                        rev: parts[1..].iter().copied().map(|s| s.to_string()).collect(),
+                        index: repo_list.len(),
                     });
                 }
             } else {
-                let parts: Vec<&str> = s.split('@').collect();
-                if parts.len() == 2 {
-                    repo_list.push(MooncakeSource::MooncakesIO {
-                        name: parts[0].to_string(),
-                        version: Some(parts[1].to_string()),
-                    });
-                } else {
-                    repo_list.push(MooncakeSource::MooncakesIO {
-                        name: s.to_string(),
-                        version: None,
-                    });
-                }
+                // moonbitlang/core
+                // moonbitlang/core 0.1.0 0.2.0
+                let parts: Vec<&str> = s.split(' ').collect();
+                let name = parts[0].to_string();
+                let version: Vec<String> =
+                    parts[1..].iter().copied().map(|s| s.to_string()).collect();
+                repo_list.push(MooncakeSource::MooncakesIO {
+                    name,
+                    version,
+                    index: repo_list.len(),
+                });
             }
         }
     }
@@ -123,7 +127,11 @@ fn stat_mooncake(
 pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
     let tmp = tempfile::tempdir()?;
     match source {
-        MooncakeSource::Git { url, rev: _ } => {
+        MooncakeSource::Git {
+            url,
+            rev: _,
+            index: _,
+        } => {
             git::git_clone_to(url, tmp.path(), "test")?;
         }
         MooncakeSource::MooncakesIO { .. } => {
@@ -131,35 +139,57 @@ pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
         }
     }
     let workdir = tmp.path().join("test");
-    let check_wasm = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Wasm))?;
-    let check_wasm_gc = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::WasmGC))?;
-    let check_js = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Js))?;
 
-    let build_wasm = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Wasm))?;
-    let build_wasm_gc = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::WasmGC))?;
-    let build_js = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Js))?;
+    let mut cbts = vec![];
 
-    let test_wasm = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Wasm))?;
-    let test_wasm_gc = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::WasmGC))?;
-    let test_js = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Js))?;
+    match source {
+        MooncakeSource::Git { url, rev, index } => {
+            for h in rev {
+                git::git_checkout(&workdir, &h)?;
+                let check_wasm =
+                    stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Wasm))?;
+                let check_wasm_gc =
+                    stat_mooncake(&workdir, source, MoonCommand::Check(Backend::WasmGC))?;
+                let check_js = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Js))?;
+
+                let build_wasm =
+                    stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Wasm))?;
+                let build_wasm_gc =
+                    stat_mooncake(&workdir, source, MoonCommand::Build(Backend::WasmGC))?;
+                let build_js = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Js))?;
+
+                let test_wasm = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Wasm))?;
+                let test_wasm_gc =
+                    stat_mooncake(&workdir, source, MoonCommand::Test(Backend::WasmGC))?;
+                let test_js = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Js))?;
+
+                cbts.push(CBT {
+                    check: BackendState {
+                        wasm: check_wasm,
+                        wasm_gc: check_wasm_gc,
+                        js: check_js,
+                    },
+                    build: BackendState {
+                        wasm: build_wasm,
+                        wasm_gc: build_wasm_gc,
+                        js: build_js,
+                    },
+                    test: BackendState {
+                        wasm: test_wasm,
+                        wasm_gc: test_wasm_gc,
+                        js: test_js,
+                    },
+                });
+            }
+        }
+        MooncakeSource::MooncakesIO { .. } => {
+            todo!()
+        }
+    }
 
     Ok(BuildState {
-        source: source.clone(),
-        check: BackendState {
-            wasm: check_wasm,
-            wasm_gc: check_wasm_gc,
-            js: check_js,
-        },
-        build: BackendState {
-            wasm: build_wasm,
-            wasm_gc: build_wasm_gc,
-            js: build_js,
-        },
-        test: BackendState {
-            wasm: test_wasm,
-            wasm_gc: test_wasm_gc,
-            js: test_js,
-        },
+        source: source.get_index(),
+        cbts,
     })
 }
 

@@ -1,42 +1,24 @@
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub enum MooncakeSource {
     MooncakesIO {
         name: String,
-        version: Option<String>,
+        version: Vec<String>,
+        index: usize,
     },
     Git {
         url: String,
-        rev: Option<String>,
+        rev: Vec<String>,
+        index: usize,
     },
 }
 
-impl fmt::Display for MooncakeSource {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl MooncakeSource {
+    pub fn get_index(&self) -> usize {
         match self {
-            MooncakeSource::MooncakesIO { name, version } => {
-                write!(
-                    f,
-                    "{}{}",
-                    name,
-                    version
-                        .as_deref()
-                        .map(|v| format!("@{}", v))
-                        .unwrap_or("".into())
-                )
-            }
-            MooncakeSource::Git { url, rev } => {
-                write!(
-                    f,
-                    "{}{}",
-                    url,
-                    rev.as_deref()
-                        .map(|v| format!("@{}", v))
-                        .unwrap_or("".into())
-                )
-            }
+            MooncakeSource::MooncakesIO { index, .. } => *index,
+            MooncakeSource::Git { index, .. } => *index,
         }
     }
 }
@@ -126,9 +108,14 @@ pub struct BackendState {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct BuildState {
-    pub source: MooncakeSource,
+pub struct CBT {
     pub check: BackendState,
     pub build: BackendState,
     pub test: BackendState,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BuildState {
+    pub source: usize,
+    pub cbts: Vec<CBT>,
 }
