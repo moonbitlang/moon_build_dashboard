@@ -47,7 +47,7 @@ jobs:
       - name: Build
         run: |
           cargo build --release
-          ./target/release/moon_dashboard --file repos.txt
+          ./target/release/moon_dashboard stat --file repos.txt
 
       - name: Commit
         run: |
