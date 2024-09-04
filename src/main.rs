@@ -214,6 +214,7 @@ fn run_matrix(workdir: &Path, source: &MooncakeSource) -> anyhow::Result<CBT> {
         },
     })
 }
+
 fn stat(cmd: cli::StatSubcommand) -> anyhow::Result<MoonBuildDashboard> {
     let run_id = std::env::var("GITHUB_ACTION_RUN_ID").unwrap_or("0".into());
     let run_number = std::env::var("GITHUB_ACTION_RUN_NUMBER").unwrap_or("0".into());

@@ -100,20 +100,15 @@ fn gen_latest_list_with_version() {
 pub fn get_all_mooncakes() -> anyhow::Result<MooncakesDB> {
     let mut db: BTreeMap<String, Vec<String>> = BTreeMap::new();
     let dir = index().join("user");
-    let walker = walkdir::WalkDir::new(dir).into_iter();
+    let walker = walkdir::WalkDir::new(&dir).into_iter();
     for entry in walker.filter_map(|e| e.ok()).filter(|e| {
         e.path().is_file() && e.path().extension().and_then(|ext| ext.to_str()) == Some("index")
     }) {
-        let username = entry
-            .path()
-            .parent()
-            .unwrap()
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
-        let pkgname = entry.path().file_stem().unwrap().to_str().unwrap();
-        let name = format!("{}/{}", username, pkgname);
+        let p = entry.path();
+        let name = p.strip_prefix(&dir).unwrap().to_str().unwrap();
+        let dot_index = name.rfind(".index").unwrap_or(name.len());
+        let name = &name[0..dot_index];
+
         let index_file_content = std::fs::read_to_string(entry.path())?;
         let mut is_mooncakes_test = false;
         let mut indexes = vec![];

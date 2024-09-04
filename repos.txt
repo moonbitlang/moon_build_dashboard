@@ -14,6 +14,7 @@ Howardzhangdqs/md5 latest 0.9.3
 Lampese/moonbit-chalk latest 0.3.1
 PerfectPan/base64 latest 0.1.1
 Yoorkin/ArgParser latest 0.1.6
+Yoorkin/example/list latest 0.1.4
 Yoorkin/format latest 0.1.5
 Yoorkin/hashtbl latest 0.1.1
 Yoorkin/hello latest 0.1.3
@@ -33,7 +34,6 @@ chawyehsu/punycode latest 0.0.2
 eczn/eczn-utils latest 0.2.0
 enjoecn/easy latest 0.1.0
 enjoecn/gb latest 0.1.1
-example/list latest 0.1.4
 extism/moonbit-pdk latest 0.36.0
 fantix/mmhttp latest 0.3.0
 fantix/muts latest 0.5.4
@@ -69,16 +69,14 @@ oboard/numoon latest 0.2.0
 peter-jerry-ye/advent_of_code latest 0.3.1-fix
 peter-jerry-ye/assertion latest 0.2.1
 peter-jerry-ye/canvas latest 0.3.0
-peter-jerry-ye/json latest 0.3.2
+peter-jerry-ye/json latest 0.4.0
 peter-jerry-ye/memory latest 0.8.3
-peter-jerry-ye/parser-combinator latest 0.9.0
+peter-jerry-ye/parser-combinator latest 0.9.1
 peter-jerry-ye/utils latest 0.1.0
 peter-jerry-ye/wasi latest 0.16.1
 summer-boythink/moonorm latest 0.1.0
 tiye/cirru-parser latest 0.0.1
 tmkx/hello latest 0.0.0
-tonyfettes/iter latest 0.1.2
-tonyfettes/ops latest 0.0.1
 tonyfettes/torch latest 0.1.1
 wangziling/hello latest 0.0.1
 yamajik/wasi latest 0.1.0
