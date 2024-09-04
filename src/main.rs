@@ -15,11 +15,30 @@ use moon_dashboard::{
         MooncakeSource, Status, ToolChainLabel, ToolChainVersion, CBT,
     },
     mooncakesio,
-    util::{get_moon_version, get_moonc_version, install_bleeding_release, install_stable_release},
+    util::{
+        get_moon_version, get_moonc_version, install_bleeding_release, install_stable_release,
+        MoonOpsError,
+    },
 };
 use moon_dashboard::{git, util::moon_update};
 
-fn run_moon(workdir: &Path, source: &MooncakeSource, args: &[&str]) -> anyhow::Result<Duration> {
+#[derive(Debug, thiserror::Error)]
+pub enum RunMoonError {
+    #[error("io error")]
+    IOError(#[from] std::io::Error),
+
+    #[error("non-zero exit code: {0}")]
+    ReturnNonZero(std::process::ExitStatus),
+
+    #[error("from utf8 error")]
+    FromUtf8(#[from] std::string::FromUtf8Error),
+}
+
+fn run_moon(
+    workdir: &Path,
+    source: &MooncakeSource,
+    args: &[&str],
+) -> Result<Duration, RunMoonError> {
     let start = Instant::now();
     eprintln!(
         "{}",
@@ -30,10 +49,11 @@ fn run_moon(workdir: &Path, source: &MooncakeSource, args: &[&str]) -> anyhow::R
     let mut cmd = std::process::Command::new("moon")
         .current_dir(workdir)
         .args(args)
-        .spawn()?;
-    let exit = cmd.wait()?;
+        .spawn()
+        .map_err(|e| RunMoonError::IOError(e))?;
+    let exit = cmd.wait().map_err(|e| RunMoonError::IOError(e))?;
     if !exit.success() {
-        return Err(anyhow::anyhow!("failed to execute"));
+        return Err(RunMoonError::ReturnNonZero(exit));
     }
     let elapsed = start.elapsed();
     eprintln!(
@@ -49,8 +69,30 @@ fn run_moon(workdir: &Path, source: &MooncakeSource, args: &[&str]) -> anyhow::R
     Ok(elapsed)
 }
 
-fn get_mooncake_sources(cmd: &cli::StatSubcommand) -> anyhow::Result<Vec<MooncakeSource>> {
-    let db = mooncakesio::get_all_mooncakes()?;
+#[derive(Debug, thiserror::Error)]
+#[error("get mooncake sources error")]
+struct GetMooncakeSourcesError {
+    #[source]
+    kind: GetMooncakeSourcesErrorKind,
+}
+
+#[derive(Debug, thiserror::Error)]
+enum GetMooncakeSourcesErrorKind {
+    #[error("io error")]
+    IOError(#[from] std::io::Error),
+    #[error("failed on mooncakesio")]
+    MooncakesIO(#[from] mooncakesio::MooncakesIOError),
+
+    #[error("failed on mooncakesdb")]
+    MooncakesDB(#[from] mooncakesio::MooncakesDBError),
+}
+
+fn get_mooncake_sources(
+    cmd: &cli::StatSubcommand,
+) -> Result<Vec<MooncakeSource>, GetMooncakeSourcesError> {
+    let db = mooncakesio::get_all_mooncakes().map_err(|e| GetMooncakeSourcesError {
+        kind: GetMooncakeSourcesErrorKind::MooncakesIO(e),
+    })?;
     let mut repo_list = vec![];
     if let Some(r) = &cmd.repo_url {
         repo_list.push(MooncakeSource::Git {
@@ -61,7 +103,9 @@ fn get_mooncake_sources(cmd: &cli::StatSubcommand) -> anyhow::Result<Vec<Mooncak
     }
 
     if let Some(file) = &cmd.file {
-        let content = std::fs::read_to_string(file)?;
+        let content = std::fs::read_to_string(file).map_err(|e| GetMooncakeSourcesError {
+            kind: GetMooncakeSourcesErrorKind::IOError(e),
+        })?;
         for line in content.lines() {
             let s = line.trim();
             if s.starts_with("#") || s.trim().is_empty() {
@@ -97,12 +141,15 @@ fn get_mooncake_sources(cmd: &cli::StatSubcommand) -> anyhow::Result<Vec<Mooncak
                     .iter()
                     .map(|s| {
                         if s == "latest" {
-                            db.get_latest_version(&name).unwrap().to_string()
+                            db.get_latest_version(&name)
+                                .map_err(|e| GetMooncakeSourcesError {
+                                    kind: GetMooncakeSourcesErrorKind::MooncakesDB(e),
+                                })
                         } else {
-                            s.to_string()
+                            Ok(s.to_string())
                         }
                     })
-                    .collect();
+                    .collect::<Result<Vec<String>, GetMooncakeSourcesError>>()?;
                 version.sort();
                 version.dedup();
                 repo_list.push(MooncakeSource::MooncakesIO {
@@ -116,14 +163,20 @@ fn get_mooncake_sources(cmd: &cli::StatSubcommand) -> anyhow::Result<Vec<Mooncak
     Ok(repo_list)
 }
 
+#[derive(Debug, thiserror::Error)]
+enum StatMooncakeError {
+    #[error("run moon")]
+    RunMoon(#[from] RunMoonError),
+}
+
 fn stat_mooncake(
     workdir: &Path,
     source: &MooncakeSource,
     cmd: MoonCommand,
-) -> anyhow::Result<ExecuteResult> {
+) -> Result<ExecuteResult, StatMooncakeError> {
     let _ = run_moon(workdir, source, &["clean"]);
 
-    let r = run_moon(workdir, source, &cmd.args());
+    let r = run_moon(workdir, source, &cmd.args()).map_err(|e| StatMooncakeError::RunMoon(e));
     let status = if r.is_err() {
         Status::Failure
     } else {
@@ -143,13 +196,25 @@ fn stat_mooncake(
     Ok(execute_result)
 }
 
-pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
-    let tmp = tempfile::tempdir()?;
+#[derive(Debug, thiserror::Error)]
+pub enum BuildError {
+    #[error("io error")]
+    IOError(#[from] std::io::Error),
+    #[error("return non zero")]
+    ReturnNonZero(std::process::ExitStatus),
+    #[error("from utf8")]
+    FromUtf8(#[from] std::string::FromUtf8Error),
+    #[error("git")]
+    GitError(git::GitOpsError),
+}
+
+pub fn build(source: &MooncakeSource) -> Result<BuildState, BuildError> {
+    let tmp = tempfile::tempdir().map_err(|e| BuildError::IOError(e))?;
     let mut cbts = vec![];
 
     match source {
         MooncakeSource::Git { url, rev, index: _ } => {
-            git::git_clone_to(url, tmp.path(), "test")?;
+            git::git_clone_to(url, tmp.path(), "test").map_err(|e| BuildError::GitError(e))?;
             let workdir = tmp.path().join("test");
             for h in rev {
                 if let Err(e) = git::git_checkout(&workdir, h) {
@@ -183,18 +248,33 @@ pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
     })
 }
 
-fn run_matrix(workdir: &Path, source: &MooncakeSource) -> anyhow::Result<CBT> {
-    let check_wasm = stat_mooncake(workdir, source, MoonCommand::Check(Backend::Wasm))?;
-    let check_wasm_gc = stat_mooncake(workdir, source, MoonCommand::Check(Backend::WasmGC))?;
-    let check_js = stat_mooncake(workdir, source, MoonCommand::Check(Backend::Js))?;
+#[derive(Debug, thiserror::Error)]
+enum RunMatrixError {
+    #[error("stat mooncake")]
+    StatMooncake(#[from] StatMooncakeError),
+}
 
-    let build_wasm = stat_mooncake(workdir, source, MoonCommand::Build(Backend::Wasm))?;
-    let build_wasm_gc = stat_mooncake(workdir, source, MoonCommand::Build(Backend::WasmGC))?;
-    let build_js = stat_mooncake(workdir, source, MoonCommand::Build(Backend::Js))?;
+fn run_matrix(workdir: &Path, source: &MooncakeSource) -> Result<CBT, RunMatrixError> {
+    let check_wasm = stat_mooncake(workdir, source, MoonCommand::Check(Backend::Wasm))
+        .map_err(|e| RunMatrixError::StatMooncake(e))?;
+    let check_wasm_gc = stat_mooncake(workdir, source, MoonCommand::Check(Backend::WasmGC))
+        .map_err(|e| RunMatrixError::StatMooncake(e))?;
+    let check_js = stat_mooncake(workdir, source, MoonCommand::Check(Backend::Js))
+        .map_err(|e| RunMatrixError::StatMooncake(e))?;
 
-    let test_wasm = stat_mooncake(workdir, source, MoonCommand::Test(Backend::Wasm))?;
-    let test_wasm_gc = stat_mooncake(workdir, source, MoonCommand::Test(Backend::WasmGC))?;
-    let test_js = stat_mooncake(workdir, source, MoonCommand::Test(Backend::Js))?;
+    let build_wasm = stat_mooncake(workdir, source, MoonCommand::Build(Backend::Wasm))
+        .map_err(|e| RunMatrixError::StatMooncake(e))?;
+    let build_wasm_gc = stat_mooncake(workdir, source, MoonCommand::Build(Backend::WasmGC))
+        .map_err(|e| RunMatrixError::StatMooncake(e))?;
+    let build_js = stat_mooncake(workdir, source, MoonCommand::Build(Backend::Js))
+        .map_err(|e| RunMatrixError::StatMooncake(e))?;
+
+    let test_wasm = stat_mooncake(workdir, source, MoonCommand::Test(Backend::Wasm))
+        .map_err(|e| RunMatrixError::StatMooncake(e))?;
+    let test_wasm_gc = stat_mooncake(workdir, source, MoonCommand::Test(Backend::WasmGC))
+        .map_err(|e| RunMatrixError::StatMooncake(e))?;
+    let test_js = stat_mooncake(workdir, source, MoonCommand::Test(Backend::Js))
+        .map_err(|e| RunMatrixError::StatMooncake(e))?;
 
     Ok(CBT {
         check: BackendState {
@@ -215,43 +295,94 @@ fn run_matrix(workdir: &Path, source: &MooncakeSource) -> anyhow::Result<CBT> {
     })
 }
 
-fn stat(cmd: cli::StatSubcommand) -> anyhow::Result<MoonBuildDashboard> {
+#[derive(Debug, thiserror::Error)]
+#[error("stat error")]
+struct StatError {
+    #[source]
+    kind: StatErrorKind,
+}
+
+#[derive(Debug, thiserror::Error)]
+enum StatErrorKind {
+    #[error("failed on moon operations")]
+    MoonOpsError(#[from] MoonOpsError),
+
+    #[error("failed on get mooncake sources")]
+    GetMooncakeSourcesError(#[from] GetMooncakeSourcesError),
+
+    #[error("failed on build")]
+    BuildError(#[from] BuildError),
+}
+
+fn stat(cmd: cli::StatSubcommand) -> Result<MoonBuildDashboard, StatError> {
     let run_id = std::env::var("GITHUB_ACTION_RUN_ID").unwrap_or("0".into());
     let run_number = std::env::var("GITHUB_ACTION_RUN_NUMBER").unwrap_or("0".into());
 
-    install_stable_release()?;
-    moon_update()?;
-    let moon_version = get_moon_version()?;
-    let moonc_version = get_moonc_version()?;
+    if !cmd.skip_install {
+        install_stable_release().map_err(|e| StatError {
+            kind: StatErrorKind::MoonOpsError(e),
+        })?;
+    }
+    if !cmd.skip_update {
+        moon_update().map_err(|e| StatError {
+            kind: StatErrorKind::MoonOpsError(e),
+        })?;
+    }
+    let moon_version = get_moon_version().map_err(|e| StatError {
+        kind: StatErrorKind::MoonOpsError(e),
+    })?;
+    let moonc_version = get_moonc_version().map_err(|e| StatError {
+        kind: StatErrorKind::MoonOpsError(e),
+    })?;
     let stable_toolchain_version = ToolChainVersion {
         label: ToolChainLabel::Stable,
         moon_version,
         moonc_version,
     };
 
-    let mooncake_sources = get_mooncake_sources(&cmd)?;
+    let mooncake_sources = get_mooncake_sources(&cmd).map_err(|e| StatError {
+        kind: StatErrorKind::GetMooncakeSourcesError(e),
+    })?;
     let mut stable_release_data = vec![];
 
     for source in mooncake_sources {
-        let build_state = build(&source)?;
+        let build_state = build(&source).map_err(|e| StatError {
+            kind: StatErrorKind::BuildError(e),
+        })?;
         stable_release_data.push(build_state);
     }
 
-    install_bleeding_release()?;
-    moon_update()?;
-    let moon_version = get_moon_version()?;
-    let moonc_version = get_moonc_version()?;
+    if !cmd.skip_install {
+        install_bleeding_release().map_err(|e| StatError {
+            kind: StatErrorKind::MoonOpsError(e),
+        })?;
+    }
+    if !cmd.skip_update {
+        moon_update().map_err(|e| StatError {
+            kind: StatErrorKind::MoonOpsError(e),
+        })?;
+    }
+    let moon_version = get_moon_version().map_err(|e| StatError {
+        kind: StatErrorKind::MoonOpsError(e),
+    })?;
+    let moonc_version = get_moonc_version().map_err(|e| StatError {
+        kind: StatErrorKind::MoonOpsError(e),
+    })?;
     let bleeding_toolchain_version = ToolChainVersion {
         label: ToolChainLabel::Bleeding,
         moon_version,
         moonc_version,
     };
 
-    let mooncake_sources = get_mooncake_sources(&cmd)?;
+    let mooncake_sources = get_mooncake_sources(&cmd).map_err(|e| StatError {
+        kind: StatErrorKind::GetMooncakeSourcesError(e),
+    })?;
     let mut bleeding_release_data = vec![];
 
     for source in mooncake_sources.iter() {
-        let build_state = build(source)?;
+        let build_state = build(source).map_err(|e| StatError {
+            kind: StatErrorKind::BuildError(e),
+        })?;
         bleeding_release_data.push(build_state);
     }
 
@@ -265,7 +396,6 @@ fn stat(cmd: cli::StatSubcommand) -> anyhow::Result<MoonBuildDashboard> {
         bleeding_toolchain_version,
         bleeding_release_data,
     };
-    dbg!(&result);
     Ok(result)
 }
 
@@ -285,7 +415,7 @@ fn main0() -> anyhow::Result<()> {
             writer.flush()?;
             Ok(())
         }
-        Err(e) => Err(e),
+        Err(e) => Err(anyhow::anyhow!(e)),
     }
 }
 

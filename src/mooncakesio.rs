@@ -7,7 +7,21 @@ use serde::{Deserialize, Serialize};
 
 const BASE_URL: &str = "https://moonbitlang-mooncakes.s3.us-west-2.amazonaws.com/user";
 
-pub fn download_to(name: &str, version: &str, dst: &Path) -> anyhow::Result<()> {
+#[derive(Debug, thiserror::Error)]
+pub enum MooncakesIOError {
+    #[error("io error")]
+    IOError(#[from] std::io::Error),
+    #[error("return non zero")]
+    ReturnNonZero(std::process::ExitStatus),
+    #[error("from utf8")]
+    FromUtf8(#[from] std::string::FromUtf8Error),
+    #[error("serde")]
+    Serde(#[from] serde_json::Error),
+    #[error("walkdir")]
+    WalkDir(#[from] walkdir::Error),
+}
+
+pub fn download_to(name: &str, version: &str, dst: &Path) -> Result<(), MooncakesIOError> {
     let version_enc = form_urlencoded::Serializer::new(String::new())
         .append_key_only(version)
         .finish();
@@ -17,18 +31,20 @@ pub fn download_to(name: &str, version: &str, dst: &Path) -> anyhow::Result<()> 
         .arg("-o")
         .arg(&output_zip)
         .arg(&url)
-        .output()?;
+        .output()
+        .map_err(|e| MooncakesIOError::IOError(e))?;
     if !output.status.success() {
-        anyhow::bail!("failed to download {}", url)
+        return Err(MooncakesIOError::ReturnNonZero(output.status));
     }
 
     let output = std::process::Command::new("unzip")
         .arg(&output_zip)
         .arg("-d")
         .arg(dst.join(version))
-        .output()?;
+        .output()
+        .map_err(|e| MooncakesIOError::IOError(e))?;
     if !output.status.success() {
-        anyhow::bail!("failed to unzip {}", output_zip)
+        return Err(MooncakesIOError::ReturnNonZero(output.status));
     }
 
     Ok(())
@@ -67,9 +83,29 @@ pub struct MooncakesDB {
     db: BTreeMap<String, Vec<String>>,
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("mooncakesdb error")]
+pub struct MooncakesDBError {
+    #[source]
+    kind: MooncakesDBErrorKind,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum MooncakesDBErrorKind {
+    #[error("key not found: {key}")]
+    NotFound { key: String },
+}
+
 impl MooncakesDB {
-    pub fn get_latest_version(&self, name: &str) -> Option<&String> {
-        self.db.get(name).map(|versions| versions.last().unwrap())
+    pub fn get_latest_version(&self, name: &str) -> Result<String, MooncakesDBError> {
+        self.db
+            .get(name)
+            .map(|versions| versions.last().unwrap().to_string())
+            .ok_or(MooncakesDBError {
+                kind: MooncakesDBErrorKind::NotFound {
+                    key: name.to_string(),
+                },
+            })
     }
 }
 
@@ -97,7 +133,7 @@ fn gen_latest_list_with_version() {
     }
 }
 
-pub fn get_all_mooncakes() -> anyhow::Result<MooncakesDB> {
+pub fn get_all_mooncakes() -> Result<MooncakesDB, MooncakesIOError> {
     let mut db: BTreeMap<String, Vec<String>> = BTreeMap::new();
     let dir = index().join("user");
     let walker = walkdir::WalkDir::new(&dir).into_iter();
@@ -109,11 +145,13 @@ pub fn get_all_mooncakes() -> anyhow::Result<MooncakesDB> {
         let dot_index = name.rfind(".index").unwrap_or(name.len());
         let name = &name[0..dot_index];
 
-        let index_file_content = std::fs::read_to_string(entry.path())?;
+        let index_file_content =
+            std::fs::read_to_string(entry.path()).map_err(|e| MooncakesIOError::IOError(e))?;
         let mut is_mooncakes_test = false;
         let mut indexes = vec![];
         for line in index_file_content.lines() {
-            let index: MooncakeInfo = serde_json::from_str(line)?;
+            let index: MooncakeInfo =
+                serde_json::from_str(line).map_err(|e| MooncakesIOError::Serde(e))?;
             indexes.push(index.version);
             if let Some(keywords) = &index.keywords {
                 if keywords.contains(&"mooncakes-test".to_string()) {

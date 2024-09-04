@@ -17,4 +17,8 @@ pub struct StatSubcommand {
     pub repo_url: Option<String>,
     #[clap(long)]
     pub file: Option<PathBuf>,
+    #[clap(long)]
+    pub skip_install: bool,
+    #[clap(long)]
+    pub skip_update: bool,
 }
