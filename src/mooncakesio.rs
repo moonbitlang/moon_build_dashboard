@@ -107,6 +107,10 @@ impl MooncakesDB {
                 },
             })
     }
+
+    pub fn contains_key(&self, name: &str) -> bool {
+        self.db.contains_key(name)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

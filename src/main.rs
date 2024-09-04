@@ -137,6 +137,10 @@ fn get_mooncake_sources(
                 if xs.is_empty() {
                     xs.push("latest".to_string());
                 }
+                if !db.contains_key(&name) {
+                    eprintln!("{} not found", name);
+                    continue;
+                }
                 let mut version: Vec<String> = xs
                     .iter()
                     .map(|s| {
