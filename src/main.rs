@@ -166,7 +166,7 @@ pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
             index: _,
         } => {
             for v in version {
-                if let Err(e) = mooncakesio::download_to(name, &v, tmp.path()) {
+                if let Err(e) = mooncakesio::download_to(name, v, tmp.path()) {
                     eprintln!("Failed to download {}/{}: {}", name, v, e);
                     cbts.push(None);
                     continue;
@@ -184,17 +184,17 @@ pub fn build(source: &MooncakeSource) -> anyhow::Result<BuildState> {
 }
 
 fn run_matrix(workdir: &Path, source: &MooncakeSource) -> anyhow::Result<CBT> {
-    let check_wasm = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Wasm))?;
-    let check_wasm_gc = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::WasmGC))?;
-    let check_js = stat_mooncake(&workdir, source, MoonCommand::Check(Backend::Js))?;
+    let check_wasm = stat_mooncake(workdir, source, MoonCommand::Check(Backend::Wasm))?;
+    let check_wasm_gc = stat_mooncake(workdir, source, MoonCommand::Check(Backend::WasmGC))?;
+    let check_js = stat_mooncake(workdir, source, MoonCommand::Check(Backend::Js))?;
 
-    let build_wasm = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Wasm))?;
-    let build_wasm_gc = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::WasmGC))?;
-    let build_js = stat_mooncake(&workdir, source, MoonCommand::Build(Backend::Js))?;
+    let build_wasm = stat_mooncake(workdir, source, MoonCommand::Build(Backend::Wasm))?;
+    let build_wasm_gc = stat_mooncake(workdir, source, MoonCommand::Build(Backend::WasmGC))?;
+    let build_js = stat_mooncake(workdir, source, MoonCommand::Build(Backend::Js))?;
 
-    let test_wasm = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Wasm))?;
-    let test_wasm_gc = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::WasmGC))?;
-    let test_js = stat_mooncake(&workdir, source, MoonCommand::Test(Backend::Js))?;
+    let test_wasm = stat_mooncake(workdir, source, MoonCommand::Test(Backend::Wasm))?;
+    let test_wasm_gc = stat_mooncake(workdir, source, MoonCommand::Test(Backend::WasmGC))?;
+    let test_js = stat_mooncake(workdir, source, MoonCommand::Test(Backend::Js))?;
 
     Ok(CBT {
         check: BackendState {

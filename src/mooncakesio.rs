@@ -9,7 +9,7 @@ const BASE_URL: &str = "https://moonbitlang-mooncakes.s3.us-west-2.amazonaws.com
 
 pub fn download_to(name: &str, version: &str, dst: &Path) -> anyhow::Result<()> {
     let version_enc = form_urlencoded::Serializer::new(String::new())
-        .append_key_only(&version)
+        .append_key_only(version)
         .finish();
     let url = format!("{}/{}/{}.zip", BASE_URL, name, version_enc);
     let output_zip = format!("{}.zip", dst.join(version).display());
@@ -62,18 +62,12 @@ pub fn index_of_pkg(base: &Path, user: &str, pkg: &str) -> PathBuf {
         .with_extension("index")
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MooncakesDB {
     db: BTreeMap<String, Vec<String>>,
 }
 
 impl MooncakesDB {
-    pub fn new() -> Self {
-        Self {
-            db: BTreeMap::new(),
-        }
-    }
-
     pub fn get_latest_version(&self, name: &str) -> Option<&String> {
         self.db.get(name).map(|versions| versions.last().unwrap())
     }
@@ -121,14 +115,19 @@ pub fn get_all_mooncakes() -> anyhow::Result<MooncakesDB> {
         let pkgname = entry.path().file_stem().unwrap().to_str().unwrap();
         let name = format!("{}/{}", username, pkgname);
         let index_file_content = std::fs::read_to_string(entry.path())?;
+        let mut is_mooncakes_test = false;
+        let mut indexes = vec![];
         for line in index_file_content.lines() {
             let index: MooncakeInfo = serde_json::from_str(line)?;
+            indexes.push(index.version);
             if let Some(keywords) = &index.keywords {
                 if keywords.contains(&"mooncakes-test".to_string()) {
-                    continue;
+                    is_mooncakes_test = true;
                 }
             }
-            db.entry(name.to_string()).or_default().push(index.version);
+        }
+        if !is_mooncakes_test {
+            db.insert(name.to_string(), indexes);
         }
     }
     Ok(MooncakesDB { db })
