@@ -1,11 +1,12 @@
 https://github.com/moonbitlang/core main
 https://github.com/moonbitlang/x main
 https://github.com/gmlewis/moonbit-fonts master
+https://github.com/trancee/wasmSID main
 
 # generated list to test mooncakes on mooncakes.io
 CAIMEOX/feat-moon latest 0.2.0
 CAIMEOX/list latest 0.1.0
-CAIMEOX/quickcheck latest 0.5.0
+CAIMEOX/quickcheck latest 0.6.1
 CAIMEOX/state latest 0.1.0
 CAIMEOX/t latest 0.1.0
 Guest0x0/HAMT latest 0.2.1
@@ -16,10 +17,9 @@ PerfectPan/base64 latest 0.1.1
 Yoorkin/ArgParser latest 0.1.6
 Yoorkin/example/list latest 0.1.4
 Yoorkin/format latest 0.1.5
-Yoorkin/hashtbl latest 0.1.1
 Yoorkin/hello latest 0.1.3
 Yoorkin/prettyprinter latest 0.3.5
-Yoorkin/stack latest 0.1.3
+Yoorkin/stack latest 0.1.4
 Yoorkin/trie latest 0.2.1
 Yu-zh/either latest 0.1.0
 YumeCross/schema latest 0.2.1
@@ -62,13 +62,13 @@ moonbitlang/wasm4 latest 0.2.0
 moonbitlang/x latest 0.4.6
 myfreess/myers-diff latest 0.1.0
 oboard/mimetype latest 0.1.2
-oboard/mocket latest 0.1.4
+oboard/mocket latest 0.1.5
 oboard/mooncrypto latest 0.1.8
 oboard/moonetx latest 0.1.5
-oboard/numoon latest 0.2.0
+oboard/numoon latest 0.2.1
 peter-jerry-ye/advent_of_code latest 0.3.1-fix
 peter-jerry-ye/assertion latest 0.2.1
-peter-jerry-ye/canvas latest 0.3.0
+peter-jerry-ye/canvas latest 0.4.0
 peter-jerry-ye/json latest 0.4.0
 peter-jerry-ye/memory latest 0.8.3
 peter-jerry-ye/parser-combinator latest 0.9.1
