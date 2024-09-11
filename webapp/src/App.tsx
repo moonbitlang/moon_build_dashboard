@@ -117,8 +117,19 @@ const App = () => {
         const stableCBT = stableEntry.cbts[versionIndex];
         const bleedingCBT = bleedingEntry?.cbts[versionIndex];
   
+        const highlightDifference = (
+          stable: ExecuteResult,
+          bleeding: ExecuteResult
+        ) =>
+          stable.status !== bleeding.status
+            ? "bg-yellow-100" // Highlight the difference
+            : "";
+  
         return (
-          <tr key={`${index}-${versionIndex}`} className="border-b hover:bg-gray-50 text-sm">
+          <tr
+            key={`${index}-${versionIndex}`}
+            className="border-b hover:bg-gray-50 text-sm"
+          >
             {/* Only display the source name in the first row */}
             {versionIndex === 0 && (
               <td className="py-2 px-4" rowSpan={rowSpan}>
@@ -178,9 +189,69 @@ const App = () => {
             {/* Bleeding Data */}
             {bleedingCBT ? (
               <>
-                {renderBackendState(bleedingCBT.check)}
-                {renderBackendState(bleedingCBT.build)}
-                {renderBackendState(bleedingCBT.test)}
+                {/* Check */}
+                {["wasm", "wasm_gc", "js"].map((key) => (
+                  <td
+                    key={`bleeding-check-${key}`}
+                    className={`py-2 px-4 ${
+                      stableCBT && stableCBT.check
+                        ? highlightDifference(
+                            stableCBT.check[key as keyof BackendState],
+                            bleedingCBT.check[key as keyof BackendState]
+                          )
+                        : ""
+                    } border-r ${getStatusStyle(
+                      bleedingCBT.check[key as keyof BackendState].status
+                    )}`}
+                  >
+                    {getStatusText(
+                      bleedingCBT.check[key as keyof BackendState].status,
+                      bleedingCBT.check[key as keyof BackendState].elapsed
+                    )}
+                  </td>
+                ))}
+                {/* Build */}
+                {["wasm", "wasm_gc", "js"].map((key) => (
+                  <td
+                    key={`bleeding-build-${key}`}
+                    className={`py-2 px-4 ${
+                      stableCBT && stableCBT.build
+                        ? highlightDifference(
+                            stableCBT.build[key as keyof BackendState],
+                            bleedingCBT.build[key as keyof BackendState]
+                          )
+                        : ""
+                    } border-r ${getStatusStyle(
+                      bleedingCBT.build[key as keyof BackendState].status
+                    )}`}
+                  >
+                    {getStatusText(
+                      bleedingCBT.build[key as keyof BackendState].status,
+                      bleedingCBT.build[key as keyof BackendState].elapsed
+                    )}
+                  </td>
+                ))}
+                {/* Test */}
+                {["wasm", "wasm_gc", "js"].map((key) => (
+                  <td
+                    key={`bleeding-test-${key}`}
+                    className={`py-2 px-4 ${
+                      stableCBT && stableCBT.test
+                        ? highlightDifference(
+                            stableCBT.test[key as keyof BackendState],
+                            bleedingCBT.test[key as keyof BackendState]
+                          )
+                        : ""
+                    } border-r ${getStatusStyle(
+                      bleedingCBT.test[key as keyof BackendState].status
+                    )}`}
+                  >
+                    {getStatusText(
+                      bleedingCBT.test[key as keyof BackendState].status,
+                      bleedingCBT.test[key as keyof BackendState].elapsed
+                    )}
+                  </td>
+                ))}
               </>
             ) : (
               <td colSpan={9} className="py-2 px-4 text-center text-gray-500">
